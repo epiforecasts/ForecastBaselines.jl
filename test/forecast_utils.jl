@@ -82,8 +82,10 @@ end
 end
 
 @testitem "filter_horizons keeps the requested horizons in every field" setup = [ForecastFixtures] tags = [:forecast] begin
-    fc = example_forecast(horizon = [1, 2, 3])
+    fc = example_forecast(horizon = [1, 2, 3], dated = true)
     kept = filter_horizons(fc, [3, 1])
+    @test kept.target_date == fc.target_date[[3, 1]]
+    @test kept.reference_date == fc.reference_date
     @test kept.horizon == [3, 1]
     @test kept.mean == [30.0, 10.0]
     @test kept.median == [31.0, 11.0]
@@ -105,17 +107,19 @@ end
 end
 
 @testitem "extend_forecast merges forecasts with disjoint horizons in horizon order" setup = [ForecastFixtures] tags = [:forecast] begin
-    early = example_forecast(horizon = [1, 3], model_name = "a")
-    late = example_forecast(horizon = [2, 4], model_name = "b")
+    using Dates
+    early = example_forecast(horizon = [1, 3], model_name = "a", dated = true)
+    late = example_forecast(horizon = [2, 4], model_name = "b", dated = true)
     combined = extend_forecast(early, late)
     @test combined.horizon == [1, 2, 3, 4]
+    @test combined.target_date == [Date(2024, 1, 1) + Week(h) for h in 1:4]
     @test combined.mean == [10.0, 20.0, 30.0, 40.0]
     @test combined.truth == [13.0, 23.0, 33.0, 43.0]
     @test combined.intervals == [early.intervals[1], late.intervals[1], early.intervals[2], late.intervals[2]]
     @test combined.trajectories == hcat(early.trajectories, late.trajectories)[:, [1, 3, 2, 4]]
     @test combined.model_name == "a + b"
 
-    @test_throws ArgumentError extend_forecast(early, example_forecast(horizon = [3]))
+    @test_throws ArgumentError extend_forecast(early, example_forecast(horizon = [3], dated = true))
     @test_throws ArgumentError extend_forecast(
         early, Forecast(horizon = [2], mean = [1.0], resolution = 2)
     )
