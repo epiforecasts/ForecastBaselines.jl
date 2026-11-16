@@ -729,7 +729,9 @@ function getInitial(x::Vector{T1}, model::ETSModel) where {T1 <: Real}
     T = length(x)
     if !(model.season isa NSeason)
         s = model.season.s
-        if length(x) > 2 * s
+        # The moving average over two seasons leaves T - 2s + 1 deviations, and each
+        # season needs at least one of them.
+        if length(x) - 2 * s + 1 >= s
             ff = (t -> mean(x[t:(t + 2 * s - 1)])).(1:(T - 2 * s + 1))
             tSeq = (1:(T - 2 * s + 1)) .+ s
             if model.season isa ASeason

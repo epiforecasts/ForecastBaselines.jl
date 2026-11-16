@@ -155,6 +155,9 @@ end
 end
 
 @testitem "ETS starts a short seasonal series from no seasonal pattern" setup = [TestData] tags = [:models, :ets] begin
+    # Two seasons and a half leave too few deviations from the moving average to
+    # cover every season.
+    @test all(isfinite, ForecastBaselines.getInitial(seasonal_data[1:30], ETSModel(season = "A", s = 12)).z0.S)
     x = seasonal_data[1:20]
     @test ForecastBaselines.getInitial(x, ETSModel(season = "A", s = 12)).z0.S == zeros(12)
     @test ForecastBaselines.getInitial(x, ETSModel(season = "M", s = 12)).z0.S == ones(12)
