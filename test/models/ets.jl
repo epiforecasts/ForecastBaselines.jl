@@ -65,3 +65,12 @@ end
     @test slope("Md") ≈ slope("M")
     @test slope("A") < -2
 end
+
+@testitem "Damped multiplicative trends fit when the search turns the trend negative" setup = [TestData] tags = [:models, :ets] begin
+    # On this series the simplex passes through a negative trend state, which the damped
+    # multiplicative trend raises to the power ϕ.
+    for error in ("A", "M")
+        fitted = fit_baseline(seasonal_data, ETSModel(error = error, trend = "Md", season = "A", s = 12))
+        @test all(isfinite, point_forecast(fitted, 1:6))
+    end
+end

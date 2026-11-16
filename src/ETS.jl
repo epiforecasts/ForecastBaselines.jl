@@ -782,9 +782,16 @@ function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64}) where {T
         return 1.0e8 * (1 + violation)
     end
 
-    filtered = ETSFilter(x, model, par)
+    # A multiplicative trend state can turn negative inside the search, and a damped one
+    # is then raised to the power phi. Such parameters are as infeasible as those above.
+    filtered = try
+        ETSFilter(x, model, par)
+    catch err
+        err isa DomainError || rethrow()
+        return 1.0e8
+    end
     ϵ = filtered.ϵ
-    rr = [r_function(filtered.z0, model, par.θ); (zz -> r_function(zz, model, par.θ)).(filtered.z[1:(end - 1)])]
+    rr =[r_function(filtered.z0, model, par.θ); (zz -> r_function(zz, model, par.θ)).(filtered.z[1:(end - 1)])]
     return length(x) * log(sum(ϵ .^ 2)) + 2 * sum(log.(abs.(rr)))
 end
 
