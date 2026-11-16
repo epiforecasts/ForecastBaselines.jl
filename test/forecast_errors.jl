@@ -110,12 +110,13 @@ end
 @testitem "Trajectory errors" tags = [:scoring] begin
     trajectories = [1.0 2.0; 2.0 3.0; 3.0 4.0; 4.0 5.0]
     # LogLoss is minus the log of the share of samples equal to the truth, plus an offset
-    # (0.01 by default). The columns hold 1 to 4 and 2 to 5, so 2.0 is one of four samples
-    # in each, 3.0 one of four in the first and 9.0 none of the second.
-    fc = Forecast(horizon = [1, 2], mean = [2.5, 3.5], trajectories = trajectories, truth = [2.0, 2.0])
+    # (0.01 by default). The columns hold 1 to 4 and 2 to 5, so 1.0 is one of four samples
+    # in the first column and none of the second, and 5.0 the other way round. Scoring a
+    # truth against the wrong horizon's samples changes the result.
+    fc = Forecast(horizon = [1, 2], mean = [2.5, 3.5], trajectories = trajectories, truth = [1.0, 5.0])
     @test all_forecast_errors(fc, LogLoss()) ≈ [-log(1 / 4 + 0.01), -log(1 / 4 + 0.01)]
 
-    fc = Forecast(horizon = [1, 2], mean = [2.5, 3.5], trajectories = trajectories, truth = [3.0, 9.0])
+    fc = Forecast(horizon = [1, 2], mean = [2.5, 3.5], trajectories = trajectories, truth = [1.0, 1.0])
     @test all_forecast_errors(fc, LogLoss()) ≈ [-log(1 / 4 + 0.01), -log(0 + 0.01)]
     @test all_forecast_errors(fc, LogLoss(offset = 0.1)) ≈ [-log(1 / 4 + 0.1), -log(0 + 0.1)]
 
