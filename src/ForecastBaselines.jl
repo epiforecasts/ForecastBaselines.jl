@@ -1,7 +1,7 @@
 module ForecastBaselines
 
 using LinearAlgebra, Random, Dates, Distributions, Printf
-using Polynomials, Optim, Interpolations, KernelDensity
+using Polynomials, Optim, KernelDensity
 using StatsBase: sample, wsample
 
 include("Types.jl")
