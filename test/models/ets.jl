@@ -75,16 +75,13 @@ end
     end
 end
 
-@testitem "Damped multiplicative trends fit from a negative starting level or trend" setup = [TestData] tags = [:models, :ets] begin
+@testitem "Damped multiplicative trends fit a rising and a falling series" setup = [TestData] tags = [:models, :ets] begin
     using Random
-    # getInitial starts the trend below zero on the rising series and the level below
-    # zero on the falling one with a seasonal component.
+    # Both used to start with a negative trend or level and crash during the search.
     Random.seed!(1)
     rising = 2.0 .* (1:40) .- 1 .+ 0.1 .* randn(40)
     Random.seed!(7)
     falling = collect(300.0 .- 2.25 .* (1:60) .+ randn(60))
-    @test ForecastBaselines.getInitial(rising, ETSModel(trend = "Md")).z0.B < 0
-    @test ForecastBaselines.getInitial(falling, ETSModel(trend = "Md", season = "A", s = 12)).z0.L < 0
     for (name, x) in (("rising", rising), ("falling", falling)), error in ("A", "M"), season in ("N", "A")
         model = ETSModel(error = error, trend = "Md", season = season, s = 12)
         @testset "$name,$error,Md,$season" begin
