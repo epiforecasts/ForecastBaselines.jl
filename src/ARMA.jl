@@ -147,15 +147,17 @@ struct ARMAFitted <: AbstractFittedModel
     par::ARMAParameter
     estimation_setting::ARMAEstimationSetting
     temporal_info::TemporalInfo
+    optimisation::Union{OptimisationInfo, Nothing}
     function ARMAFitted(
             x, model::ARMAModel, par::ARMAParameter,
             estimation_setting::ARMAEstimationSetting,
-            temporal_info::TemporalInfo = TemporalInfo()
+            temporal_info::TemporalInfo = TemporalInfo(),
+            optimisation::Union{OptimisationInfo, Nothing} = nothing
         )
         if !(x isa Vector{Float64})
             x = Float64.(x)
         end
-        return new(x, model, par, estimation_setting, temporal_info)
+        return new(x, model, par, estimation_setting, temporal_info, optimisation)
     end
 end
 
@@ -384,11 +386,13 @@ function fit_baseline(
         model.μDim > 0 ? [mean(x); zeros(model.μDim - 1)] : zeros(0);
         var(x)
     ]
-    est = optimize(vars -> tf(vars, x, model, setting.ensure_stability), inits).minimizer
-    estPar = ARMAθ2par(est, model)
+    result = optimize(vars -> tf(vars, x, model, setting.ensure_stability), inits)
+    estPar = ARMAθ2par(result.minimizer, model)
 
-    return ARMAFitted(x, model, estPar, setting, temporal_info)
+    return ARMAFitted(x, model, estPar, setting, temporal_info, optimisation_info(result, "ARMA"))
 end
+
+has_converged(fitted::ARMAFitted) = isnothing(fitted.optimisation) ? nothing : fitted.optimisation.converged
 
 """
     point_forecast(fitted::ARMAFitted, horizon::Union{Vector{Int}, Int, UnitRange{Int}}) -> Vector{Float64}

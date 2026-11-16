@@ -6,6 +6,7 @@ using Distributions: Distributions, ContinuousUnivariateDistribution, Distributi
     std, truncated, var
 using KernelDensity: KernelDensity, kde
 using LinearAlgebra: LinearAlgebra
+using Logging: Logging
 using Optim: Optim, optimize
 using Polynomials: Polynomials
 using Printf: @sprintf
@@ -13,6 +14,7 @@ using Random: Random
 using StatsBase: sample, wsample
 
 include("Types.jl")
+include("Optimisation.jl")
 include("ForecastUtils.jl")
 include("IntervalMethods.jl")
 include("HistoricalForecastErrors.jl")
@@ -47,6 +49,7 @@ export AbstractBaselineModel, AbstractFittedModel, AbstractModelParameters,
     AbstractEstimationSetting, AbstractIntervalMethod, AbstractForecast,
     ForecastInterval, Forecast, TemporalInfo
 export fit_baseline, forecast, point_forecast, interval_forecast
+export OptimisationInfo, has_converged
 export has_horizon, has_mean, has_median, has_intervals, has_truth, has_trajectories,
     has_reference_date, has_target_date, has_temporal_info,
     add_truth, add_median, add_intervals, add_trajectories, add_temporal_info,

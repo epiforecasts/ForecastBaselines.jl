@@ -844,17 +844,19 @@ struct ETSFitted <: AbstractFittedModel
     par::ETSParameter
     estimation_setting::ETSEstimationSetting
     temporal_info::TemporalInfo
+    optimisation::Union{OptimisationInfo, Nothing}
     function ETSFitted(
             x,
             model::ETSModel,
             par::ETSParameter,
             estimation_setting::ETSEstimationSetting,
-            temporal_info::TemporalInfo = TemporalInfo()
+            temporal_info::TemporalInfo = TemporalInfo(),
+            optimisation::Union{OptimisationInfo, Nothing} = nothing
         )
         if !(x isa Vector{Float64})
             x = Float64.(x)
         end
-        return new(x, model, par, estimation_setting, temporal_info)
+        return new(x, model, par, estimation_setting, temporal_info, optimisation)
     end
 end
 
@@ -905,8 +907,12 @@ function fit_baseline(
     initVec = ETSpar2θ(init, model)
     result = optimize(vars -> L_fun(x, model, vars), initVec)
     estVec = result.minimizer
-    return ETSFitted(x, model, ETSθ2par(estVec, model), setting, temporal_info)
+    return ETSFitted(
+        x, model, ETSθ2par(estVec, model), setting, temporal_info, optimisation_info(result, "ETS")
+    )
 end
+
+has_converged(fitted::ETSFitted) = isnothing(fitted.optimisation) ? nothing : fitted.optimisation.converged
 
 """
     point_forecast(fitted::ETSFitted, horizon::Union{Vector{Int}, Int, UnitRange{Int}}) -> Vector{Float64}
