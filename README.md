@@ -1,7 +1,7 @@
 # ForecastBaselines.jl
 
-[![CI](https://github.com/ManuelStapper/ForecastBaselines.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/ManuelStapper/ForecastBaselines.jl/actions/workflows/CI.yml)
-[![codecov](https://codecov.io/gh/ManuelStapper/ForecastBaselines.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/ManuelStapper/ForecastBaselines.jl)
+[![CI](https://github.com/epiforecasts/ForecastBaselines.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/epiforecasts/ForecastBaselines.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/epiforecasts/ForecastBaselines.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/epiforecasts/ForecastBaselines.jl)
 
 A comprehensive Julia package for baseline forecasting methods.
 
@@ -20,7 +20,7 @@ ForecastBaselines.jl provides a framework for time series forecasting. The packa
 
 ```julia
 using Pkg
-Pkg.add("https://github.com/ManuelStapper/ForecastBaselines.jl")
+Pkg.add(url = "https://github.com/epiforecasts/ForecastBaselines.jl")
 ```
 
 ## Basic Usage
@@ -567,7 +567,7 @@ To add models, see also ModelTemplate.jl
 @software{ForecastBaselines.jl,
   author = {Manuel Stapper},
   title = {ForecastBaselines.jl: Baseline Forecasting Methods in Julia},
-  url = {https://github.com/ManuelStapper/ForecastBaselines.jl},
+  url = {https://github.com/epiforecasts/ForecastBaselines.jl},
   version = {0.1.0},
   year = {2025}
 }

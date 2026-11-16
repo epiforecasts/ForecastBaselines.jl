@@ -538,7 +538,7 @@ function interval_forecast(fitted::ARMAFitted,
     for (i, h) in enumerate(horizon)
         # Normal quantiles scaled by prediction standard deviation
         pred_sd = sqrt(pred_vars[i])
-        all_quantiles = fc_point[i] .+ quantile(Normal(0, 1), alpha) .* pred_sd
+        all_quantiles = fc_point[i] .+ quantile.(Normal(0, 1), alpha) .* pred_sd
         
         if method.positivity_correction == :post_clip
             all_quantiles[all_quantiles .< 0] .= 0.0
