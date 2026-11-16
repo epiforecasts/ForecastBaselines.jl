@@ -138,3 +138,18 @@ end
         @test z0.B ≈ -2.25 rtol = 0.25
     end
 end
+
+@testitem "ETS starts a multiplicative trend at a positive growth factor" setup = [TestData] tags = [:models, :ets] begin
+    using Random
+    Random.seed!(1)
+    rising = 2.0 .* (1:40) .- 1 .+ 0.1 .* randn(40)
+    growth = [5 * 1.05^t for t in 1:40]
+    for trend in ("M", "Md")
+        z0 = ForecastBaselines.getInitial(rising, ETSModel(trend = trend)).z0
+        @test z0.L > 0
+        @test z0.B > 1
+        z0 = ForecastBaselines.getInitial(growth, ETSModel(trend = trend)).z0
+        @test z0.L ≈ 5
+        @test z0.B ≈ 1.05
+    end
+end

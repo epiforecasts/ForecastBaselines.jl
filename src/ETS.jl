@@ -771,7 +771,15 @@ function getInitial(x::Vector{T1}, model::ETSModel) where {T1 <: Real}
     if model.trend isa ATrend || model.trend isa AdTrend
         b = beta[2]
     elseif model.trend isa MTrend || model.trend isa MdTrend
-        b = 1 + beta[2] / beta[1]
+        if all(yy .> 0)
+            # A growth factor is positive, so fit the line on the log scale; the
+            # level and factor then start positive.
+            log_beta = inv(X'X) * X' * log.(yy)
+            l = exp(log_beta[1])
+            b = exp(log_beta[2])
+        else
+            b = 1.0
+        end
     else
         b = 0.0
     end
