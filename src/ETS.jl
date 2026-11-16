@@ -778,11 +778,12 @@ function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64}) where {T
         max(0, -par.θ.β) + max(0, par.θ.β - par.θ.α) +
         max(0, -par.θ.γ) + max(0, par.θ.γ - (1 - par.θ.α)) +
         max(0, -par.θ.ϕ) + max(0, par.θ.ϕ - 1)
-    # A multiplicative trend is a growth factor, and a damped one is raised to the
-    # power phi, so its state has to stay positive. getInitial can start it below zero.
-    multiplicative_trend = model.trend isa Union{MTrend, MdTrend}
-    if multiplicative_trend
-        violation += max(0, -par.z0.B)
+    # A damped multiplicative trend is raised to the power phi, so its state has to stay
+    # positive, and a negative level drives it negative. getInitial can start either
+    # below zero; the penalty slopes back towards positive values.
+    damped_multiplicative = model.trend isa MdTrend
+    if damped_multiplicative
+        violation += max(0, -par.z0.L) + max(0, -par.z0.B)
     end
     if violation > 0
         return 1.0e8 * (1 + violation)
@@ -795,12 +796,10 @@ function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64}) where {T
         # The trend state turned negative partway through the series.
         return 1.0e8
     end
-    if multiplicative_trend
-        # The final state is the one point_forecast starts from.
-        negative_trend = sum(z -> max(0, -z.B), filtered.z)
-        if negative_trend > 0
-            return 1.0e8 * (1 + negative_trend)
-        end
+    # The filter only raises the states before the last to the power phi, but
+    # point_forecast starts from the last one.
+    if damped_multiplicative && filtered.z[end].B < 0
+        return 1.0e8 * (1 - filtered.z[end].B)
     end
     ϵ = filtered.ϵ
     rr = [r_function(filtered.z0, model, par.θ); (zz -> r_function(zz, model, par.θ)).(filtered.z[1:(end - 1)])]
@@ -891,8 +890,9 @@ function fit_baseline(
     # L_fun only returns 1e8 or more for infeasible parameters.
     result.minimum < 1.0e8 || throw(
         ArgumentError(
-            "No feasible parameters found for this ETS model; " *
-                "a multiplicative trend needs a series whose trend stays positive"
+            "The search from the starting values found no parameters that keep this " *
+                "ETS model's damped multiplicative trend positive; an undamped or " *
+                "additive trend may suit the series"
         )
     )
     estVec = result.minimizer
