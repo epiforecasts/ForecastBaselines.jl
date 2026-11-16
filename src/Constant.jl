@@ -31,7 +31,7 @@ struct ConstantParameter <: AbstractModelParameters
     μ::Float64
     function ConstantParameter(μ)
         μ isa Real || throw(ArgumentError("μ must be a real number"))
-        new(μ)
+        return new(μ)
     end
 end
 
@@ -64,15 +64,17 @@ struct ConstantFitted <: AbstractFittedModel
     par::ConstantParameter
     estimation_setting::ConstantEstimationSetting
     temporal_info::TemporalInfo
-    function ConstantFitted(x,
+    function ConstantFitted(
+            x,
             model::ConstantModel,
             par::ConstantParameter,
             estimation_setting::ConstantEstimationSetting = ConstantEstimationSetting(),
-            temporal_info::TemporalInfo = TemporalInfo())
+            temporal_info::TemporalInfo = TemporalInfo()
+        )
         if !(x isa Vector{Float64})
             x = Float64.(x)
         end
-        new(x, model, par, estimation_setting, temporal_info)
+        return new(x, model, par, estimation_setting, temporal_info)
     end
 end
 
@@ -103,18 +105,22 @@ fitted = fit_baseline(data, ConstantModel())
 fitted.par.μ  # Returns 3.5
 ```
 """
-function fit_baseline(x::Vector{T},
-             model::ConstantModel;
-             setting::Union{ConstantEstimationSetting, Nothing} = ConstantEstimationSetting(),
-             temporal_info::TemporalInfo = TemporalInfo()) where {T <: Real}
+function fit_baseline(
+        x::Vector{T},
+        model::ConstantModel;
+        setting::Union{ConstantEstimationSetting, Nothing} = ConstantEstimationSetting(),
+        temporal_info::TemporalInfo = TemporalInfo()
+    ) where {T <: Real}
     if isnothing(setting)
         setting = ConstantEstimationSetting()
     end
-    ConstantFitted(x, model, ConstantParameter(x[end]), setting, temporal_info)
+    return ConstantFitted(x, model, ConstantParameter(x[end]), setting, temporal_info)
 end
 
-function point_forecast(fitted::ConstantFitted,
-        horizon::Union{Vector{Int}, Int, UnitRange{Int}})
+function point_forecast(
+        fitted::ConstantFitted,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}}
+    )
     if horizon isa Int
         horizon = collect(1:horizon)
     end
@@ -125,5 +131,5 @@ function point_forecast(fitted::ConstantFitted,
     all(horizon .> 0) || throw(ArgumentError("Horizons must be non-negative."))
     length(horizon) .> 0 || throw(ArgumentError("Valid forecast horizons must be provided."))
 
-    fill(fitted.par.μ, length(horizon))
+    return fill(fitted.par.μ, length(horizon))
 end

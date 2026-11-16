@@ -39,11 +39,11 @@ model = LSDModel(s=1, w=0)
 struct LSDModel <: AbstractBaselineModel
     s::Int
     w::Int
-    function LSDModel(;s::Int = 1, w::Int = 0)
-        ((w >= 0) & (w < s)) || throw(ArgumentError("Invalid window size"))
+    function LSDModel(; s::Int = 1, w::Int = 0)
+        ((w >= 0) & (w < s)) || throw(ArgumentError("Invalid window size"))
         (s >= 1) || throw(ArgumentError("Invalid periodicity"))
 
-        new(s, w)
+        return new(s, w)
     end
 end
 
@@ -61,7 +61,7 @@ computed from all historical observations at that position (±window).
 struct LSDParameter <: AbstractModelParameters
     μ::Vector{Float64}
     function LSDParameter(μ)
-        new(Float64.(μ))
+        return new(Float64.(μ))
     end
 end
 
@@ -91,9 +91,9 @@ setting = LSDEstimationSetting(estimation_function = x -> quantile(x, 0.75))
 """
 struct LSDEstimationSetting <: AbstractEstimationSetting
     estimation_function::Function
-    function LSDEstimationSetting(;estimation_function::Function = mean)
+    function LSDEstimationSetting(; estimation_function::Function = mean)
         estimation_function(collect(1:10)) isa Real || throw(ArgumentError("estimation_function must have real-valued scalar output"))
-        new(estimation_function)
+        return new(estimation_function)
     end
 end
 
@@ -117,18 +117,20 @@ struct LSDFitted <: AbstractFittedModel
     par::LSDParameter
     estimation_setting::LSDEstimationSetting
     temporal_info::TemporalInfo
-    function LSDFitted(x,
+    function LSDFitted(
+            x,
             model::LSDModel,
             par::LSDParameter,
             estimation_setting::LSDEstimationSetting,
-            temporal_info::TemporalInfo = TemporalInfo())
+            temporal_info::TemporalInfo = TemporalInfo()
+        )
         #
         (length(par.μ) == model.s) || throw(ArgumentError("Length of means must equal periodicity"))
         if !(x isa Vector{Float64})
             x = Float64.(x)
         end
-        
-        new(x, model, par, estimation_setting, temporal_info)
+
+        return new(x, model, par, estimation_setting, temporal_info)
     end
 end
 
@@ -155,10 +157,12 @@ Fit LSD model by computing periodic averages.
 4. **Aggregate**: Apply estimation function to get μ[i] for each position i
 ```
 """
-function fit_baseline(x::Vector{T1},
+function fit_baseline(
+        x::Vector{T1},
         model::LSDModel;
         setting::Union{LSDEstimationSetting, Nothing} = LSDEstimationSetting(),
-        temporal_info::TemporalInfo = TemporalInfo()) where {T1 <: Real}
+        temporal_info::TemporalInfo = TemporalInfo()
+    ) where {T1 <: Real}
     w = model.w
     s = model.s
     T = length(x)
@@ -168,16 +172,16 @@ function fit_baseline(x::Vector{T1},
 
     # Create a set of indices for s = 1 and then shift along the time series
     # Should first contain negative indices (up to -S+1)
-    cen = collect(1:s:T+w)
-    ind = vcat((cc -> cc-w:cc+w).(cen)...)
+    cen = collect(1:s:(T + w))
+    ind = vcat((cc -> (cc - w):(cc + w)).(cen)...)
     μ = zeros(s)
-    for ss = 1:s
+    for ss in 1:s
         indS = ind .+ ss .- 1
         indS = indS[0 .< indS .<= T]
         μ[ss] = setting.estimation_function(x[indS])
     end
 
-    LSDFitted(x, model, LSDParameter(μ), setting, temporal_info)
+    return LSDFitted(x, model, LSDParameter(μ), setting, temporal_info)
 end
 
 """
@@ -200,8 +204,10 @@ For each horizon h:
 
 This cyclically repeats the fitted periodic pattern into the future.
 """
-function point_forecast(fitted::LSDFitted,
-        horizon::Union{Vector{Int}, Int, UnitRange{Int}})
+function point_forecast(
+        fitted::LSDFitted,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}}
+    )
     if horizon isa Int
         horizon = collect(1:horizon)
     end
@@ -215,7 +221,7 @@ function point_forecast(fitted::LSDFitted,
     tNew = length(fitted.x) .+ horizon
     ind = mod.(tNew, fitted.model.s)
     ind[ind .== 0] .= fitted.model.s
-    fitted.par.μ[ind]
+    return fitted.par.μ[ind]
 end
 
 """
@@ -239,12 +245,14 @@ Generate parametric prediction intervals using historical quantiles.
 3. **Forecast Lookup**: Use position-specific quantiles for prediction intervals
 4. **Apply Corrections**: Handle positivity constraints if specified
 """
-function interval_forecast(fitted::LSDFitted,
-    method::ParametricInterval,
-    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
-    levels::Vector{Float64} = [0.95];
-    alpha_precision::Int = 10,
-    include_median::Bool = true)
+function interval_forecast(
+        fitted::LSDFitted,
+        method::ParametricInterval,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+        levels::Vector{Float64} = [0.95];
+        alpha_precision::Int = 10,
+        include_median::Bool = true
+    )
 
     if horizon isa Int
         horizon = collect(1:horizon)
@@ -265,33 +273,33 @@ function interval_forecast(fitted::LSDFitted,
         levels = [levels; 0.0]
     end
     levels = sort(levels)
-    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l*0.5).(levels)...), digits = alpha_precision)))
-    
+    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l * 0.5).(levels)...), digits = alpha_precision)))
+
     # Compute quantiles for S subsets, i.e. data that has been used for forecasting
     T = length(fitted.x)
     s = fitted.model.s
     w = fitted.model.w
-    
-    cen = collect(1:s:T+w)
-    ind = vcat((cc -> cc-w:cc+w).(cen)...)
+
+    cen = collect(1:s:(T + w))
+    ind = vcat((cc -> (cc - w):(cc + w)).(cen)...)
 
     all_quantiles = fill(Float64[], s)
 
-    for ss = 1:s
+    for ss in 1:s
         indS = ind .+ ss .- 1
         indS = indS[0 .< indS .<= T]
         all_quantiles[ss] = quantile(fitted.x[indS], alpha)
     end
-    
+
     if method.positivity_correction == :post_clip
-        for ss = 1:s
+        for ss in 1:s
             all_quantiles[ss][all_quantiles[ss] .< 0] .= 0.0
         end
     end
 
     all_intervals = fill(ForecastInterval([1.0], [1.0], [0.5]), s)
 
-    for ss = 1:s
+    for ss in 1:s
         ls = reverse(all_quantiles[ss][alpha .< 0.5])
         us = all_quantiles[s][alpha .> 0.5]
         all_intervals[ss] = ForecastInterval(ls, us, levels[levels .> 0])
@@ -343,12 +351,14 @@ Generate trajectory-based prediction intervals using bootstrap sampling.
 - `:truncate`: Remove negative observations from sampling pools
 - `:zero_floor` / `:post_clip`: Set negative samples to zero
 """
-function interval_forecast(fitted::LSDFitted,
-    method::ModelTrajectoryInterval,
-    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
-    levels::Vector{Float64} = [0.95];
-    alpha_precision::Int = 10,
-    include_median::Bool = true)
+function interval_forecast(
+        fitted::LSDFitted,
+        method::ModelTrajectoryInterval,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+        levels::Vector{Float64} = [0.95];
+        alpha_precision::Int = 10,
+        include_median::Bool = true
+    )
 
     if horizon isa Int
         horizon = collect(1:horizon)
@@ -371,19 +381,19 @@ function interval_forecast(fitted::LSDFitted,
         levels = [levels; 0.0]
     end
     levels = sort(levels)
-    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l*0.5).(levels)...), digits = alpha_precision)))
-    
+    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l * 0.5).(levels)...), digits = alpha_precision)))
+
     # Compute quantiles for S subsets, i.e. data that has been used for forecasting
     T = length(fitted.x)
     s = fitted.model.s
     w = fitted.model.w
-    
-    cen = collect(1:s:T+w)
-    ind = vcat((cc -> cc-w:cc+w).(cen)...)
+
+    cen = collect(1:s:(T + w))
+    ind = vcat((cc -> (cc - w):(cc + w)).(cen)...)
 
     all_observations = fill(Float64[], s)
 
-    for ss = 1:s
+    for ss in 1:s
         indS = ind .+ ss .- 1
         indS = indS[0 .< indS .<= T]
         all_observations[ss] = fitted.x[indS]
@@ -394,7 +404,7 @@ function interval_forecast(fitted::LSDFitted,
     end
 
     if method.positivity_correction in [:zero_floor, :post_clip]
-        for ss = 1:length(all_observations)
+        for ss in 1:length(all_observations)
             all_observations[ss][all_observations[ss] .< 0] .= 0.0
         end
     end
@@ -402,28 +412,28 @@ function interval_forecast(fitted::LSDFitted,
     tNew = length(fitted.x) .+ horizon
     ind = mod.(tNew, s)
     ind[ind .== 0] .= s
-    
+
     trajectories = zeros(method.n_trajectories, length(horizon))
-    for i = 1:length(ind)
+    for i in 1:length(ind)
         trajectories[:, i] = sample(all_observations[ind[i]], method.n_trajectories)
     end
-    
+
     # Removing the seed
     Random.seed!(nothing)
 
     fc_intervals = Vector{ForecastInterval}(undef, length(horizon))
-    fc_median = include_median ? zeros(length(horizon)) : nothing 
+    fc_median = include_median ? zeros(length(horizon)) : nothing
 
     if include_median
         i_median = findfirst(alpha .== 0.5)
     end
 
-    for h = 1:length(horizon)
-        all_quantiles = [quantile(trajectories[:, h], q) for q = alpha]
+    for h in 1:length(horizon)
+        all_quantiles = [quantile(trajectories[:, h], q) for q in alpha]
         ls = reverse(all_quantiles[alpha .< 0.5])
         us = all_quantiles[alpha .> 0.5]
         fc_intervals[h] = ForecastInterval(ls, us, levels[levels .> 0])
-    
+
         if include_median
             fc_median[h] = all_quantiles[i_median]
         end

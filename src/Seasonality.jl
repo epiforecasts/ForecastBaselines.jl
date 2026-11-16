@@ -30,12 +30,12 @@ struct STTransform
     k::Int
     trend::Bool
     additive::Bool
-    function STTransform(;s = 0, k = 1, trend = false, additive = true)
+    function STTransform(; s = 0, k = 1, trend = false, additive = true)
         s isa Real || throw(ArgumentError("Periodicity must be a real number"))
         k isa Int || throw(ArgumentError("Number of sine-cosine waves must be a positive integer"))
 
         ((s > 0) || (trend)) || throw(ArgumentError("Specify either seasonality or trend"))
-        new(s, k, trend, additive)
+        return new(s, k, trend, additive)
     end
 end
 
@@ -93,12 +93,12 @@ function getST(pars::STParameter, STsetting::STTransform, T::Int)
 
     out = fill(pars.β0, T) .+ pars.b .* tSeq
 
-    for i = 1:k
+    for i in 1:k
         out = out .+ pars.θ[i] .* sin.((i * 2 * π / s) .* tSeq)
         out = out .+ pars.κ[i] .* cos.((i * 2 * π / s) .* tSeq)
     end
 
-    out
+    return out
 end
 
 """
@@ -128,20 +128,20 @@ function fitST(x::Vector{T1}, STsetting::STTransform) where {T1 <: Real}
     k = STsetting.k
     s = STsetting.s
 
-    X = ones(T, 2*STsetting.k .+ STsetting.trend + 1)
-    for i = 1:k
+    X = ones(T, 2 * STsetting.k .+ STsetting.trend + 1)
+    for i in 1:k
         X[:, i + 1] = sin.((i * 2 * π / s) .* tSeq)
-        X[:, k+i + 1] = cos.((i * 2 * π / s) .* tSeq)
+        X[:, k + i + 1] = cos.((i * 2 * π / s) .* tSeq)
     end
     if STsetting.trend
         X[:, end] = collect(1:T)
     end
-    β = inv(X'X)*X'x
+    β = inv(X'X) * X'x
 
     β0 = β[1]
     if s > 0
-        θ = β[2:1 + k]
-        κ = β[(2:1 + k) .+ k]
+        θ = β[2:(1 + k)]
+        κ = β[(2:(1 + k)) .+ k]
     else
         θ = Float64[]
         κ = Float64[]
@@ -151,7 +151,7 @@ function fitST(x::Vector{T1}, STsetting::STTransform) where {T1 <: Real}
     else
         b = 0.0
     end
-    STParameter(β0, θ, κ, b)
+    return STParameter(β0, θ, κ, b)
 end
 
 """
@@ -179,10 +179,12 @@ Remove seasonal-trend component from time series.
 - **Multiplicative**: Requires x ≥ 0 (division by seasonal component)
 - **Additive**: No restrictions on x values
 """
-function preFilter(x::Vector{T1},
-    STsetting::STTransform) where {T1 <: Real}
+function preFilter(
+        x::Vector{T1},
+        STsetting::STTransform
+    ) where {T1 <: Real}
     (STsetting.additive || all(x .>= 0)) || throw(ArgumentError("Only additive filter possible with negative values in time series"))
-    
+
     pars = fitST(x, STsetting)
     fitted = getST(pars, STsetting, length(x))
 
@@ -220,8 +222,10 @@ Add seasonal-trend component back to forecasts.
 - **Trajectories**: Transform entire trajectory matrix
 - **Median**: Transform if available
 """
-function postFilter(x::Vector{T1}, forecast::Forecast,
-    setting::STTransform, pars::STParameter) where {T1 <: Real}
+function postFilter(
+        x::Vector{T1}, forecast::Forecast,
+        setting::STTransform, pars::STParameter
+    ) where {T1 <: Real}
     h = maximum(forecast.horizon)
 
     meanVals = getST(pars, setting, length(x) + h)[forecast.horizon .+ length(x)]
@@ -270,8 +274,9 @@ function postFilter(x::Vector{T1}, forecast::Forecast,
             trajectoriesOut = nothing
         end
     end
-    
-    Forecast(horizon = forecast.horizon,
+
+    return Forecast(
+        horizon = forecast.horizon,
         mean = meanOut,
         median = medianOut,
         intervals = intervalsOut,
@@ -280,5 +285,6 @@ function postFilter(x::Vector{T1}, forecast::Forecast,
         reference_date = forecast.reference_date,
         target_date = forecast.target_date,
         resolution = forecast.resolution,
-        model_name = forecast.model_name)
+        model_name = forecast.model_name
+    )
 end

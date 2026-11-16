@@ -41,21 +41,25 @@ struct PointScoringRule <: AbstractPointScoringRule
     forecast_aggregation_function::Function
     result_transformation::Function
 
-    function PointScoringRule(;error::AbstractPointError = ForecastError(),
-        forecast_transformation::AbstractDataTransformation = NoTransform(),
-        target::Symbol = :mean,
-        missing_strategy::Symbol = :skip,
-        error_transformation::Function = identity,
-        forecast_aggregation_function::Function = mean,
-        result_transformation::Function = identity)
+    function PointScoringRule(;
+            error::AbstractPointError = ForecastError(),
+            forecast_transformation::AbstractDataTransformation = NoTransform(),
+            target::Symbol = :mean,
+            missing_strategy::Symbol = :skip,
+            error_transformation::Function = identity,
+            forecast_aggregation_function::Function = mean,
+            result_transformation::Function = identity
+        )
         if !(target in [:mean, :median]) && !((string(target)[1] == 'q') && all((n -> n in string.(0:9)).(split(string(target), "")[2:end])))
             target = :mean
         end
         if !(missing_strategy in [:error, :skip, :propagate])
             missing_strategy = :skip
         end
-        new(error, forecast_transformation, target, missing_strategy,
-            error_transformation, forecast_aggregation_function, result_transformation)
+        return new(
+            error, forecast_transformation, target, missing_strategy,
+            error_transformation, forecast_aggregation_function, result_transformation
+        )
     end
 end
 
@@ -64,14 +68,16 @@ end
 
 Mean Absolute Error scoring rule.
 """
-function MAE(;missing_strategy::Symbol = :skip)
-    PointScoringRule(error = AbsoluteError(),
+function MAE(; missing_strategy::Symbol = :skip)
+    return PointScoringRule(
+        error = AbsoluteError(),
         forecast_transformation = NoTransform(),
         target = :mean,
         missing_strategy = missing_strategy,
         error_transformation = identity,
         forecast_aggregation_function = mean,
-        result_transformation = identity)
+        result_transformation = identity
+    )
 end
 
 """
@@ -79,14 +85,16 @@ end
 
 Median Absolute Error scoring rule.
 """
-function MdAE(;missing_strategy::Symbol = :skip)
-    PointScoringRule(error = AbsoluteError(),
+function MdAE(; missing_strategy::Symbol = :skip)
+    return PointScoringRule(
+        error = AbsoluteError(),
         forecast_transformation = NoTransform(),
         target = :mean,
         missing_strategy = missing_strategy,
         error_transformation = identity,
         forecast_aggregation_function = median,
-        result_transformation = identity)
+        result_transformation = identity
+    )
 end
 
 """
@@ -94,14 +102,16 @@ end
 
 Mean Absolute Percentage Error scoring rule.
 """
-function MAPE(;missing_strategy::Symbol = :skip)
-    PointScoringRule(error = AbsoluteError(relative = true),
+function MAPE(; missing_strategy::Symbol = :skip)
+    return PointScoringRule(
+        error = AbsoluteError(relative = true),
         forecast_transformation = NoTransform(),
         target = :mean,
         missing_strategy = missing_strategy,
         error_transformation = identity,
         forecast_aggregation_function = mean,
-        result_transformation = identity)
+        result_transformation = identity
+    )
 end
 
 """
@@ -109,14 +119,16 @@ end
 
 Mean Squared Error scoring rule.
 """
-function MSE(;missing_strategy::Symbol = :skip)
-    PointScoringRule(error = SquaredError(),
+function MSE(; missing_strategy::Symbol = :skip)
+    return PointScoringRule(
+        error = SquaredError(),
         forecast_transformation = NoTransform(),
         target = :mean,
         missing_strategy = missing_strategy,
         error_transformation = identity,
         forecast_aggregation_function = mean,
-        result_transformation = identity)
+        result_transformation = identity
+    )
 end
 
 """
@@ -124,14 +136,16 @@ end
 
 Mean Squared Percentage Error scoring rule.
 """
-function MSPE(;missing_strategy::Symbol = :skip)
-    PointScoringRule(error = SquaredError(relative = true),
+function MSPE(; missing_strategy::Symbol = :skip)
+    return PointScoringRule(
+        error = SquaredError(relative = true),
         forecast_transformation = NoTransform(),
         target = :mean,
         missing_strategy = missing_strategy,
         error_transformation = identity,
         forecast_aggregation_function = mean,
-        result_transformation = identity)
+        result_transformation = identity
+    )
 end
 
 """
@@ -139,14 +153,16 @@ end
 
 Root Mean Squared Error scoring rule.
 """
-function RMSE(;missing_strategy::Symbol = :skip)
-    PointScoringRule(error = SquaredError(),
+function RMSE(; missing_strategy::Symbol = :skip)
+    return PointScoringRule(
+        error = SquaredError(),
         forecast_transformation = NoTransform(),
         target = :mean,
         missing_strategy = missing_strategy,
         error_transformation = identity,
         forecast_aggregation_function = mean,
-        result_transformation = sqrt)
+        result_transformation = sqrt
+    )
 end
 
 """
@@ -154,14 +170,16 @@ end
 
 Forecast bias scoring rule. Computes E[forecast - truth].
 """
-function Bias(;missing_strategy::Symbol = :skip)
-    PointScoringRule(error = ForecastError(),
+function Bias(; missing_strategy::Symbol = :skip)
+    return PointScoringRule(
+        error = ForecastError(),
         forecast_transformation = NoTransform(),
         target = :mean,
         missing_strategy = missing_strategy,
         error_transformation = identity,
         forecast_aggregation_function = mean,
-        result_transformation = identity)
+        result_transformation = identity
+    )
 end
 
 """
@@ -169,14 +187,16 @@ end
 
 Relative forecast bias scoring rule. Computes E[(forecast - truth)/truth].
 """
-function RelativeBias(;missing_strategy::Symbol = :skip)
-    PointScoringRule(error = ForecastError(relative = true),
+function RelativeBias(; missing_strategy::Symbol = :skip)
+    return PointScoringRule(
+        error = ForecastError(relative = true),
         forecast_transformation = NoTransform(),
         target = :mean,
         missing_strategy = missing_strategy,
         error_transformation = identity,
         forecast_aggregation_function = mean,
-        result_transformation = identity)
+        result_transformation = identity
+    )
 end
 
 """
@@ -204,11 +224,13 @@ Evaluate point forecasts using specified scoring rule.
 - `Vector{Int}`: Multiple horizons (e.g., horizon=[1,3,6])
 - `UnitRange{Int}`: Range of horizons (e.g., horizon=1:12)
 """
-function score(fc::Union{Vector{Forecast}, Forecast},
+function score(
+        fc::Union{Vector{Forecast}, Forecast},
         rule::PointScoringRule;
         horizon::Union{Int, Nothing, Vector{Int}, UnitRange{Int}} = nothing,
         transformation::T1 = NoTransform(),
-        by_horizon::Bool = false) where {T1 <: AbstractDataTransformation}
+        by_horizon::Bool = false
+    ) where {T1 <: AbstractDataTransformation}
     if fc isa Forecast
         fc = [fc]
     end
@@ -228,7 +250,7 @@ function score(fc::Union{Vector{Forecast}, Forecast},
     if horizon isa Int
         fcVec = fcVec[(f -> any(f.horizon .== horizon)).(fcVec)]
         fcVec = (f -> filter_horizons(f, [horizon])).(fcVec)
-    elseif horizon isa Vector{Int}        
+    elseif horizon isa Vector{Int}
         fcVec = fcVec[(f -> length(intersect(f.horizon, horizon)) > 0).(fcVec)]
         fcVec = (f -> filter_horizons(f, horizon)).(fcVec)
     end
@@ -237,7 +259,7 @@ function score(fc::Union{Vector{Forecast}, Forecast},
     errors = vcat(all_forecast_errors(fcVec, rule.error, missing_strategy = rule.missing_strategy)...)
     errors = rule.error_transformation.(errors)
     out = rule.forecast_aggregation_function(errors)
-    rule.result_transformation(out)
+    return rule.result_transformation(out)
 end
 
 """
@@ -260,24 +282,28 @@ struct WIS <: AbstractIntervalScoringRule
     level_weights::Union{Vector{Float64}, Nothing}
     missing_strategy::Symbol
 
-    function WIS(;levels::Union{Vector{Float64}, Nothing} = nothing,
-        level_weights::Union{Vector{Float64}, Nothing} = nothing,
-        missing_strategy::Symbol = :skip)
+    function WIS(;
+            levels::Union{Vector{Float64}, Nothing} = nothing,
+            level_weights::Union{Vector{Float64}, Nothing} = nothing,
+            missing_strategy::Symbol = :skip
+        )
         if !(missing_strategy in [:error, :skip, :propagate])
             missing_strategy = :skip
         end
         if !isnothing(levels) && !isnothing(level_weights)
             length(levels) == length(level_weights) || throw(ArgumentError("Level and weights must have the same length"))
         end
-        new(levels, level_weights, missing_strategy)
+        return new(levels, level_weights, missing_strategy)
     end
 end
 
-function score(fc::Union{Vector{Forecast}, Forecast},
+function score(
+        fc::Union{Vector{Forecast}, Forecast},
         rule::WIS;
         horizon::Union{Int, Nothing, Vector{Int}, UnitRange{Int}} = nothing,
         transformation::T1 = NoTransform(),
-        by_horizon::Bool = false) where {T1 <: AbstractDataTransformation}
+        by_horizon::Bool = false
+    ) where {T1 <: AbstractDataTransformation}
     if fc isa Forecast
         fc = [fc]
     end
@@ -296,7 +322,7 @@ function score(fc::Union{Vector{Forecast}, Forecast},
     if horizon isa Int
         fcVec = fcVec[(f -> any(f.horizon .== horizon)).(fcVec)]
         fcVec = (f -> filter_horizons(f, [horizon])).(fcVec)
-    elseif horizon isa Vector{Int}        
+    elseif horizon isa Vector{Int}
         fcVec = fcVec[(f -> length(intersect(f.horizon, horizon)) > 0).(fcVec)]
         fcVec = (f -> filter_horizons(f, horizon)).(fcVec)
     end
@@ -310,7 +336,7 @@ function score(fc::Union{Vector{Forecast}, Forecast},
     unique_levels = unique(vcat(all_levels))
     if length(unique_levels) > 1
         min_levels = unique_levels[1]
-        for i = 2:length(unique_levels)
+        for i in 2:length(unique_levels)
             min_levels = intersect(min_levels, unique_levels[i])
         end
         fcVec = (f -> filter_levels(f, min_levels)).(fcVec)
@@ -324,14 +350,14 @@ function score(fc::Union{Vector{Forecast}, Forecast},
 
     # If no weights are given, use default approach
     if isnothing(rule.level_weights)
-        w = [1; 1 .- min_levels]./2
+        w = [1; 1 .- min_levels] ./ 2
     else
         length(rule.level_weights) == length(min_levels) || throw(ArgumentError("Number of weights must equal number of levels"))
         w = rule.level_weights
     end
     errors = w[1] .* abs.(medians .- truths) .+ (e -> sum(e .* w[2:end])).(errors)
-    
-    mean(errors)
+
+    return mean(errors)
 end
 
 """
@@ -357,20 +383,24 @@ struct CRPS <: AbstractIntervalScoringRule
     levels::Union{Vector{Float64}, Nothing}
     missing_strategy::Symbol
 
-    function CRPS(;levels::Union{Vector{Float64}, Nothing} = nothing,
-        missing_strategy::Symbol = :skip)
+    function CRPS(;
+            levels::Union{Vector{Float64}, Nothing} = nothing,
+            missing_strategy::Symbol = :skip
+        )
         if !(missing_strategy in [:error, :skip, :propagate])
             missing_strategy = :skip
         end
-        new(levels, missing_strategy)
+        return new(levels, missing_strategy)
     end
 end
 
-function score(fc::Union{Vector{Forecast}, Forecast},
+function score(
+        fc::Union{Vector{Forecast}, Forecast},
         rule::CRPS;
         horizon::Union{Int, Nothing, Vector{Int}, UnitRange{Int}} = nothing,
         transformation::T1 = NoTransform(),
-        by_horizon::Bool = false) where {T1 <: AbstractDataTransformation}
+        by_horizon::Bool = false
+    ) where {T1 <: AbstractDataTransformation}
     if fc isa Forecast
         fc = [fc]
     end
@@ -389,7 +419,7 @@ function score(fc::Union{Vector{Forecast}, Forecast},
     if horizon isa Int
         fcVec = fcVec[(f -> any(f.horizon .== horizon)).(fcVec)]
         fcVec = (f -> filter_horizons(f, [horizon])).(fcVec)
-    elseif horizon isa Vector{Int}        
+    elseif horizon isa Vector{Int}
         fcVec = fcVec[(f -> length(intersect(f.horizon, horizon)) > 0).(fcVec)]
         fcVec = (f -> filter_horizons(f, horizon)).(fcVec)
     end
@@ -398,10 +428,10 @@ function score(fc::Union{Vector{Forecast}, Forecast},
     end
 
     fcVec = (f -> transform(f, transformation)).(fcVec)
-    
+
     errors = vcat(all_forecast_errors(fcVec, CRPScore(), missing_strategy = rule.missing_strategy)...)
-    
-    mean(errors)
+
+    return mean(errors)
 end
 
 """
@@ -426,12 +456,14 @@ struct CRPS_trajectory <: AbstractTrajectoryScoringRule
     levels::Union{Vector{Float64}, Nothing}
     missing_strategy::Symbol
 
-    function CRPS_trajectory(;levels::Union{Vector{Float64}, Nothing} = nothing,
-        missing_strategy::Symbol = :skip)
+    function CRPS_trajectory(;
+            levels::Union{Vector{Float64}, Nothing} = nothing,
+            missing_strategy::Symbol = :skip
+        )
         if !(missing_strategy in [:error, :skip, :propagate])
             missing_strategy = :skip
         end
-        new(levels, missing_strategy)
+        return new(levels, missing_strategy)
     end
 end
 
@@ -454,11 +486,13 @@ When `levels` specified in scoring rule:
 - Ensures fair comparison across different interval methods
 - Automatically handles missing levels (uses intersection of available levels)
 """
-function score(fc::Union{Vector{Forecast}, Forecast},
+function score(
+        fc::Union{Vector{Forecast}, Forecast},
         rule::CRPS_trajectory;
         horizon::Union{Int, Nothing, Vector{Int}, UnitRange{Int}} = nothing,
         transformation::T1 = NoTransform(),
-        by_horizon::Bool = false) where {T1 <: AbstractDataTransformation}
+        by_horizon::Bool = false
+    ) where {T1 <: AbstractDataTransformation}
     if fc isa Forecast
         fc = [fc]
     end
@@ -478,7 +512,7 @@ function score(fc::Union{Vector{Forecast}, Forecast},
     if horizon isa Int
         fcVec = fcVec[(f -> any(f.horizon .== horizon)).(fcVec)]
         fcVec = (f -> filter_horizons(f, [horizon])).(fcVec)
-    elseif horizon isa Vector{Int}        
+    elseif horizon isa Vector{Int}
         fcVec = fcVec[(f -> length(intersect(f.horizon, horizon)) > 0).(fcVec)]
         fcVec = (f -> filter_horizons(f, horizon)).(fcVec)
     end
@@ -487,8 +521,8 @@ function score(fc::Union{Vector{Forecast}, Forecast},
     end
 
     fcVec = (f -> transform(f, transformation)).(fcVec)
-    
+
     errors = vcat(all_forecast_errors(fcVec, CRPScore_trajectory(), missing_strategy = rule.missing_strategy)...)
-    
-    mean(errors)
+
+    return mean(errors)
 end

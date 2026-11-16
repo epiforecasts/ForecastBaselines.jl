@@ -25,10 +25,10 @@ STL uses iterative application of LOESS smoothing:
 """
 struct STLModel <: AbstractBaselineModel
     s::Int
-    
-    function STLModel(;s::Int = 1)
+
+    function STLModel(; s::Int = 1)
         s >= 0 || throw(ArgumentError("Periodicity must be positive"))
-        new(s)
+        return new(s)
     end
 end
 
@@ -46,10 +46,10 @@ struct STLParameter <: AbstractModelParameters
     S::Vector{Float64}
     T::Vector{Float64}
     R::Vector{Float64}
-    
+
     function STLParameter(S, T, R)
         length(S) == length(T) == length(R) || throw(ArgumentError("All components must have same length"))
-        new(Float64.(S), Float64.(T), Float64.(R))
+        return new(Float64.(S), Float64.(T), Float64.(R))
     end
 end
 
@@ -79,30 +79,32 @@ When nl = -1: nl = s + iseven(s) (next odd number ≥ s)
 - **nl**: Controls low-pass filtering in seasonal extraction
 """
 struct STLEstimationSetting <: AbstractEstimationSetting
-    ni::Int 
+    ni::Int
     no::Int
     ns::Int
     nt::Int
     nl::Int
-    function STLEstimationSetting(;ni::Int = 2,
+    function STLEstimationSetting(;
+            ni::Int = 2,
             no::Int = 5,
             ns::Int = 13,
             nt::Int = -1,
             nl::Int = -1,
-            s::Int = 1)
+            s::Int = 1
+        )
         ni > 0 || throw(ArgumentError("Inner loops must be positive"))
         no > 0 || throw(ArgumentError("Outer loops must be positive"))
         ns > 0 || throw(ArgumentError("Seasonality smoothing coefficient must be positive"))
-        
+
         if nl < 0
             nl = s + iseven(s)
         end
         if nt < 0
-            nt = ceil(Int, 1.5 * s / (1 - 3/(2*ns)))
+            nt = ceil(Int, 1.5 * s / (1 - 3 / (2 * ns)))
             nt = nt + iseven(nt)
             nt = max(nt, 5)
         end
-        new(ni, no, ns, nt, nl)
+        return new(ni, no, ns, nt, nl)
     end
 end
 
@@ -124,15 +126,17 @@ struct STLFitted <: AbstractFittedModel
     par::STLParameter
     estimation_setting::STLEstimationSetting
     temporal_info::TemporalInfo
-    
-    function STLFitted(x, model::STLModel, par::STLParameter,
-                      estimation_setting::STLEstimationSetting,
-                      temporal_info::TemporalInfo = TemporalInfo())
+
+    function STLFitted(
+            x, model::STLModel, par::STLParameter,
+            estimation_setting::STLEstimationSetting,
+            temporal_info::TemporalInfo = TemporalInfo()
+        )
         if !(x isa Vector{Float64})
             x = Float64.(x)
         end
         length(x) == length(par.S) || throw(ArgumentError("Data and parameters must have same length"))
-        new(x, model, par, estimation_setting, temporal_info)
+        return new(x, model, par, estimation_setting, temporal_info)
     end
 end
 
@@ -163,51 +167,51 @@ function loess_smooth(y::Vector{Float64}, q::Int, w::Vector{Float64})
     m = div(q + 1, 2)
 
     # Start (asymmetric)
-    for s = 0:m
+    for s in 0:m
         t_seq = 1:q
         yy = y[t_seq]
         λ = abs.(t_seq .- s)
         u = λ ./ maximum(λ)
-        ww = (1 .- u.^3).^3
+        ww = (1 .- u .^ 3) .^ 3
         ww = ww .* w[t_seq]
         ww = ww ./ sum(ww)
 
         t_bar = sum(ww .* t_seq)
         y_bar = sum(ww .* yy)
-        b_hat = sum(ww .* (t_seq .- t_bar) .* (yy .- y_bar)) / sum(ww .* (t_seq .- t_bar).^2)
+        b_hat = sum(ww .* (t_seq .- t_bar) .* (yy .- y_bar)) / sum(ww .* (t_seq .- t_bar) .^ 2)
         a_hat = y_bar - b_hat * t_bar
         out[s + 1] = a_hat + b_hat * s
     end
-    
+
     # Middle (symmetric)
-    for s = (m + 1):(T - m)
+    for s in (m + 1):(T - m)
         t_seq = (s - m):(s + m)
         yy = y[t_seq]
         λ = abs.(t_seq .- s)
         u = λ ./ maximum(λ)
-        ww = (1 .- u.^3).^3
+        ww = (1 .- u .^ 3) .^ 3
         ww = ww .* w[t_seq]
         ww = ww ./ sum(ww)
         out[s + 1] = sum(yy .* ww)
     end
-    
+
     # End (asymmetric)
-    for s = (T - m + 1):(T + 1)
+    for s in (T - m + 1):(T + 1)
         t_seq = (T - q + 1):T
         yy = y[t_seq]
         λ = abs.(t_seq .- s)
         u = λ ./ maximum(λ)
-        ww = (1 .- u.^3).^3
+        ww = (1 .- u .^ 3) .^ 3
         ww = ww .* w[t_seq]
         ww = ww ./ sum(ww)
-        
+
         t_bar = sum(ww .* t_seq)
         y_bar = sum(ww .* yy)
-        b_hat = sum(ww .* (t_seq .- t_bar) .* (yy .- y_bar)) / sum(ww .* (t_seq .- t_bar).^2)
+        b_hat = sum(ww .* (t_seq .- t_bar) .* (yy .- y_bar)) / sum(ww .* (t_seq .- t_bar) .^ 2)
         a_hat = y_bar - b_hat * t_bar
         out[s + 1] = a_hat + b_hat * s
     end
-    
+
     return out
 end
 
@@ -224,7 +228,7 @@ Compute simple moving average with specified window size.
 - `Vector{Float64}`: Moving averages (length = length(y) - q + 1)
 """
 function moving_average(y::Vector{Float64}, q::Int)
-    return [mean(y[(1:q) .+ i]) for i = 0:(length(y) - q)]
+    return [mean(y[(1:q) .+ i]) for i in 0:(length(y) - q)]
 end
 
 """
@@ -260,30 +264,35 @@ Fit STL decomposition to time series data.
   and monthly data need 157 observations.
 - Seasonal period: s must be reasonable relative to series length
 """
-function fit_baseline(x::Vector{T}, model::STLModel;
-                     setting::Union{STLEstimationSetting, Nothing} = nothing,
-                     temporal_info::TemporalInfo = TemporalInfo()) where {T <: Real}
-    
+function fit_baseline(
+        x::Vector{T}, model::STLModel;
+        setting::Union{STLEstimationSetting, Nothing} = nothing,
+        temporal_info::TemporalInfo = TemporalInfo()
+    ) where {T <: Real}
+
     if isnothing(setting)
         setting = STLEstimationSetting(s = model.s)
     end
 
     min_length = setting.ns * model.s + 1
-    length(x) >= min_length || throw(ArgumentError(
-        "STL with ns = $(setting.ns) and s = $(model.s) needs at least " *
-        "$(min_length) observations (more than ns seasonal cycles), got $(length(x))"))
-    
+    length(x) >= min_length || throw(
+        ArgumentError(
+            "STL with ns = $(setting.ns) and s = $(model.s) needs at least " *
+                "$(min_length) observations (more than ns seasonal cycles), got $(length(x))"
+        )
+    )
+
     nObs = length(x)
     model.s < nObs || throw(ArgumentError("Periodicity must be less than data length"))
-    
+
     T_comp = zeros(nObs)
     S_comp = zeros(nObs)
     R_comp = zeros(nObs)
     L_comp = zeros(nObs)
     w = ones(nObs)
-    
+
     xx = Float64.(x)
-    
+
     ni = setting.ni
     no = setting.no
     nl = setting.nl
@@ -291,27 +300,27 @@ function fit_baseline(x::Vector{T}, model::STLModel;
     ns = setting.ns
 
     s = model.s
-    
+
     # Outer loop for robust fitting
-    for i_outer = 1:no
+    for i_outer in 1:no
         # Inner loop for convergence
-        for i_inner = 1:ni
+        for i_inner in 1:ni
             # Step 1: De-trending
             dt = xx .- T_comp
-            
+
             # Step 2: Cycle-subseries smoothing
             C = zeros(nObs + 2 * s)
-            
+
             if s >= 2
-                for ss = 1:s
+                for ss in 1:s
                     yy = dt[ss:s:end]
                     if length(yy) > 1
                         ind = collect(ss:s:nObs) .+ s
                         smoothed = loess_smooth(yy, ns, w[ss:s:end])
-                        C[ind] = smoothed[2:end-1]  # Remove buffer points
+                        C[ind] = smoothed[2:(end - 1)]  # Remove buffer points
                     end
                 end
-                
+
                 # Step 3: Low pass filter
                 if length(C) >= s
                     L_filtered = moving_average(C, s)
@@ -323,7 +332,7 @@ function fit_baseline(x::Vector{T}, model::STLModel;
                     end
                     if length(L_filtered) > 0
                         L_smooth = loess_smooth(L_filtered, nl, ones(length(L_filtered)))
-                        L_comp = L_smooth[2:min(end-1, nObs+1)]
+                        L_comp = L_smooth[2:min(end - 1, nObs + 1)]
                         if length(L_comp) > nObs
                             L_comp = L_comp[1:nObs]
                         elseif length(L_comp) < nObs
@@ -332,32 +341,32 @@ function fit_baseline(x::Vector{T}, model::STLModel;
                     end
                 end
             end
-            
+
             # Step 4: De-trending smoothed cycle-subseries
             S_comp = C[(s + 1):(s + nObs)] .- L_comp
-            
+
             # Step 5: De-seasonalizing
             ds = xx .- S_comp
-            
+
             # Step 6: Trend smoothing
             T_smooth = loess_smooth(ds, nt, w)
-            T_comp = T_smooth[2:(end-1)]
+            T_comp = T_smooth[2:(end - 1)]
         end
-        
+
         # Update weights for next outer iteration
         R_comp = xx .- T_comp .- S_comp
         if no > 1 && i_outer < no
             h = 6 * median(abs.(R_comp))
             if h > 0
                 u = abs.(R_comp) ./ h
-                w = (1 .- u.^2).^2
+                w = (1 .- u .^ 2) .^ 2
                 w[u .> 1] .= 0.0
                 min_w = minimum(w[w .> 0])
-                w[w .== 0] .= min_w > 0 ? min_w : 1e-6
+                w[w .== 0] .= min_w > 0 ? min_w : 1.0e-6
             end
         end
     end
-    
+
     par = STLParameter(S_comp, T_comp, R_comp)
     return STLFitted(x, model, par, setting, temporal_info)
 end
@@ -390,13 +399,13 @@ function point_forecast(fitted::STLFitted, horizon::Union{Vector{Int}, Int, Unit
     if horizon isa UnitRange{Int}
         horizon = collect(horizon)
     end
-    
+
     all(horizon .> 0) || throw(ArgumentError("Horizons must be positive"))
     length(horizon) .> 0 || throw(ArgumentError("Valid forecast horizons must be provided."))
-    
+
     nObs = length(fitted.x)
     h_max = maximum(horizon)
-    
+
     # Forecast trend using average trend increment
     if length(fitted.par.T) > 1
         trend_increment = mean(diff(fitted.par.T))
@@ -405,22 +414,22 @@ function point_forecast(fitted::STLFitted, horizon::Union{Vector{Int}, Int, Unit
     else
         trend_forecast = fill(fitted.par.T[end], h_max)
     end
-    
+
     # Forecast seasonality by cycling through seasonal pattern
     seasonal_pattern = zeros(fitted.model.s)
-    for ss = 1:fitted.model.s
+    for ss in 1:fitted.model.s
         seasonal_indices = ss:fitted.model.s:nObs
         if !isempty(seasonal_indices)
             seasonal_pattern[ss] = mean(fitted.par.S[seasonal_indices])
         end
     end
-    
+
     # Extend seasonal pattern for forecast horizon
     seasonal_forecast = repeat(seasonal_pattern, ceil(Int, h_max / fitted.model.s))[1:h_max]
-    
+
     # Combine trend and seasonal components
     point_forecasts = trend_forecast .+ seasonal_forecast
-    
+
     return point_forecasts[horizon]
 end
 
@@ -462,12 +471,14 @@ Generate prediction intervals using STL remainder bootstrap.
 STL only supports ModelTrajectoryInterval and EmpiricalInterval method.
 No ParametricInterval available due to non-parametric nature of the decomposition.
 """
-function interval_forecast(fitted::STLFitted,
-    method::ModelTrajectoryInterval,
-    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
-    levels::Vector{Float64} = [0.95];
-    alpha_precision::Int = 10,
-    include_median::Bool = true)
+function interval_forecast(
+        fitted::STLFitted,
+        method::ModelTrajectoryInterval,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+        levels::Vector{Float64} = [0.95];
+        alpha_precision::Int = 10,
+        include_median::Bool = true
+    )
 
     if horizon isa Int
         horizon = collect(1:horizon)
@@ -486,28 +497,28 @@ function interval_forecast(fitted::STLFitted,
 
     # Create point forecasts
     fc_point = point_forecast(fitted, horizon)
-    
+
     # Structure levels and probabilities
     if include_median
         levels = [levels; 0.0]
     end
     levels = sort(levels)
-    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l*0.5).(levels)...), digits = alpha_precision)))
-    
+    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l * 0.5).(levels)...), digits = alpha_precision)))
+
     remainder = fitted.par.R
     # Add symmetry for bootstrap
     remainder_pool = [remainder; -remainder]
-    
+
     h_max = maximum(horizon)
     trajectories = zeros(method.n_trajectories, h_max)
-    
+
     # Generate trajectories
     truncated = method.positivity_correction == :truncate
     clip = method.positivity_correction == :zero_floor
 
     trajectories[:, 1] = [make_step(remainder_pool, fc_point[1], truncated, clip) for _ in 1:method.n_trajectories]
-    for hh = 2:h_max
-        trajectories[:, hh] = [make_step(remainder_pool, from, truncated, clip) for from = trajectories[:, hh-1]]
+    for hh in 2:h_max
+        trajectories[:, hh] = [make_step(remainder_pool, from, truncated, clip) for from in trajectories[:, hh - 1]]
     end
 
     if method.positivity_correction == :post_clip
@@ -515,24 +526,24 @@ function interval_forecast(fitted::STLFitted,
     end
 
     trajectories = trajectories[:, horizon]
-    
+
     # Remove seed
     Random.seed!(nothing)
 
     # Compute intervals from trajectories
     fc_intervals = Vector{ForecastInterval}(undef, length(horizon))
     fc_median = include_median ? zeros(length(horizon)) : nothing
-    
+
     if include_median
         i_median = findfirst(alpha .== 0.5)
     end
 
-    for i = 1:length(horizon)
+    for i in 1:length(horizon)
         all_quantiles = [quantile(trajectories[:, i], q) for q in alpha]
         ls = reverse(all_quantiles[alpha .< 0.5])
         us = all_quantiles[alpha .> 0.5]
         fc_intervals[i] = ForecastInterval(ls, us, levels[levels .> 0])
-        
+
         if include_median
             fc_median[i] = all_quantiles[i_median]
         end

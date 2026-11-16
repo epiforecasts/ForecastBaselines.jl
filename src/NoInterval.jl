@@ -22,18 +22,20 @@ Generate point forecasts without prediction intervals.
   - `Nothing`: No prediction intervals
   - `Nothing`: No sample trajectories
 """
-function interval_forecast(fitted::AbstractFittedModel,
-    method::NoInterval,
-    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
-    levels::Vector{Float64} = [0.95];
-    alpha_precision::Int = 10,
-    include_median::Bool = true)
+function interval_forecast(
+        fitted::AbstractFittedModel,
+        method::NoInterval,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+        levels::Vector{Float64} = [0.95];
+        alpha_precision::Int = 10,
+        include_median::Bool = true
+    )
     fc_point = point_forecast(fitted, horizon)
     if include_median
         fc_median = fc_point
     else
         fc_median = nothing
     end
-    
+
     return fc_point, fc_median, nothing, nothing
 end

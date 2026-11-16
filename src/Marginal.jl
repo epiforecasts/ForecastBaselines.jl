@@ -24,9 +24,9 @@ Estimates F using empirical distribution of historical observations.
 """
 struct MarginalModel <: AbstractBaselineModel
     p::Int
-    function MarginalModel(;p::Int = Int(1e10))
+    function MarginalModel(; p::Int = Int(1.0e10))
         p > 0 || throw(ArgumentError("Order 'p' must be positive"))
-        new(p)
+        return new(p)
     end
 end
 
@@ -45,7 +45,7 @@ struct MarginalParameter <: AbstractModelParameters
     μ::Float64
     function MarginalParameter(μ)
         μ isa Real || throw(ArgumentError("μ must be a real-valued scalar"))
-        new(Float64(μ))
+        return new(Float64(μ))
     end
 end
 
@@ -67,9 +67,9 @@ Must accept a vector and return a scalar. Common choices:
 struct MarginalEstimationSetting <: AbstractEstimationSetting
     estimation_function::Function
 
-    function MarginalEstimationSetting(;estimation_function::Function = mean)
+    function MarginalEstimationSetting(; estimation_function::Function = mean)
         estimation_function(collect(1:10)) isa Real || throw(ArgumentError("estimation_function must have real-valued scalar output"))
-        new(estimation_function)
+        return new(estimation_function)
     end
 end
 
@@ -95,15 +95,17 @@ struct MarginalFitted <: AbstractFittedModel
     estimation_setting::MarginalEstimationSetting
     temporal_info::TemporalInfo
 
-    function MarginalFitted(x,
+    function MarginalFitted(
+            x,
             model::MarginalModel,
             par::MarginalParameter,
             estimation_setting::MarginalEstimationSetting,
-            temporal_info::TemporalInfo = TemporalInfo())
+            temporal_info::TemporalInfo = TemporalInfo()
+        )
         if !(x isa Vector{Float64})
             x = Float64.(x)
         end
-        new(x, model, par, estimation_setting, temporal_info)
+        return new(x, model, par, estimation_setting, temporal_info)
     end
 end
 
@@ -128,16 +130,18 @@ Fit marginal model by estimating distribution parameters.
 2. **Estimate Location**: Apply estimation_function to selected data
 3. **Store Parameters**: Save location parameter and full data for intervals
 """
-function fit_baseline(x::Vector{T},
+function fit_baseline(
+        x::Vector{T},
         model::MarginalModel;
         setting::Union{MarginalEstimationSetting, Nothing} = MarginalEstimationSetting(),
-        temporal_info::TemporalInfo = TemporalInfo()) where {T <: Real}
+        temporal_info::TemporalInfo = TemporalInfo()
+    ) where {T <: Real}
     pp = minimum([model.p, length(x)])
     if isnothing(setting)
         setting = MarginalEstimationSetting()
     end
-    est = setting.estimation_function(x[end-pp + 1:end])
-    MarginalFitted(x, model, MarginalParameter(est), setting, temporal_info)
+    est = setting.estimation_function(x[(end - pp + 1):end])
+    return MarginalFitted(x, model, MarginalParameter(est), setting, temporal_info)
 end
 
 """
@@ -168,7 +172,7 @@ function point_forecast(fitted::MarginalFitted, horizon::Union{Vector{Int}, Int,
     all(horizon .> 0) || throw(ArgumentError("Horizons must be non-negative."))
     length(horizon) .> 0 || throw(ArgumentError("Valid forecast horizons must be provided."))
 
-    fill(fitted.par.μ, length(horizon))
+    return fill(fitted.par.μ, length(horizon))
 end
 
 """
@@ -192,12 +196,14 @@ Generate parametric prediction intervals using empirical quantiles.
 3. **Replicate Intervals**: Same intervals for all horizons
 4. **Apply Corrections**: Handle positivity constraints if specified
 """
-function interval_forecast(fitted::MarginalFitted,
-    method::ParametricInterval,
-    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
-    levels::Vector{Float64} = [0.95];
-    alpha_precision::Int = 10,
-    include_median::Bool = true)
+function interval_forecast(
+        fitted::MarginalFitted,
+        method::ParametricInterval,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+        levels::Vector{Float64} = [0.95];
+        alpha_precision::Int = 10,
+        include_median::Bool = true
+    )
 
     if horizon isa Int
         horizon = collect(1:horizon)
@@ -219,9 +225,9 @@ function interval_forecast(fitted::MarginalFitted,
         levels = [levels; 0.0]
     end
     levels = sort(levels)
-    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l*0.5).(levels)...), digits = alpha_precision)))
-    all_quantiles = quantile(fitted.x[end-pp+1:end], alpha)
-    
+    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l * 0.5).(levels)...), digits = alpha_precision)))
+    all_quantiles = quantile(fitted.x[(end - pp + 1):end], alpha)
+
     if method.positivity_correction == :post_clip
         all_quantiles[all_quantiles .< 0] .= 0.0
     end
@@ -264,15 +270,17 @@ Generate trajectory-based prediction intervals using bootstrap sampling.
 - `:truncate`: Remove negative values from sampling pool
 - `:zero_floor` / `:post_clip`: Set negative samples to zero
 """
-function interval_forecast(fitted::MarginalFitted,
-    method::ModelTrajectoryInterval,
-    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
-    levels::Vector{Float64} = [0.95];
-    alpha_precision::Int = 10,
-    include_median::Bool = true)
+function interval_forecast(
+        fitted::MarginalFitted,
+        method::ModelTrajectoryInterval,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+        levels::Vector{Float64} = [0.95];
+        alpha_precision::Int = 10,
+        include_median::Bool = true
+    )
 
     pp = minimum([fitted.model.p, length(fitted.x)])
-    xx = fitted.x[end-pp+1:end]
+    xx = fitted.x[(end - pp + 1):end]
     Random.seed!(method.seed)
 
     if horizon isa Int
@@ -281,7 +289,7 @@ function interval_forecast(fitted::MarginalFitted,
     if horizon isa UnitRange{Int}
         horizon = collect(horizon)
     end
-    
+
     # Validate input:
     all(0 .< levels .< 1.0) || throw(ArgumentError("Levels must be between 0 and 1"))
     all(horizon .> 0) || throw(ArgumentError("Horizons must be positive"))
@@ -294,7 +302,7 @@ function interval_forecast(fitted::MarginalFitted,
         levels = [levels; 0.0]
     end
     levels = sort(levels)
-    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l*0.5).(levels)...), digits = alpha_precision)))
+    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l * 0.5).(levels)...), digits = alpha_precision)))
 
     if method.positivity_correction == :truncate
         any(xx .>= 0) || error("Time series must have positive elements for positivity correction by truncation")
@@ -311,18 +319,18 @@ function interval_forecast(fitted::MarginalFitted,
     Random.seed!(nothing)
 
     fc_intervals = Vector{ForecastInterval}(undef, length(horizon))
-    fc_median = include_median ? zeros(length(horizon)) : nothing 
+    fc_median = include_median ? zeros(length(horizon)) : nothing
 
     if include_median
         i_median = findfirst(alpha .== 0.5)
     end
 
-    for h = 1:length(horizon)
-        all_quantiles = [quantile(trajectories[:, h], q) for q = alpha]
+    for h in 1:length(horizon)
+        all_quantiles = [quantile(trajectories[:, h], q) for q in alpha]
         ls = reverse(all_quantiles[alpha .< 0.5])
         us = all_quantiles[alpha .> 0.5]
         fc_intervals[h] = ForecastInterval(ls, us, levels[levels .> 0])
-    
+
         if include_median
             fc_median[h] = all_quantiles[i_median]
         end

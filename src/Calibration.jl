@@ -25,7 +25,7 @@ struct OneStepFunction
         if !(0 <= l <= 1) || !(0 <= u <= 1)
             error("Invalid steps")
         end
-        if l > u
+        return if l > u
             new(float(u), float(l))
         else
             new(float(l), float(u))
@@ -53,18 +53,22 @@ For multiple step functions:
 - `step_function(s)`: OneStepFunction or vector thereof
 """
 function evaluate_step(u::T, step_function::OneStepFunction) where {T <: Real}
-    if u <= step_function.l return 0.0 end
-    if u >= step_function.u return 1.0 end
-    return (u - step_function.l)/(step_function.u - step_function.l)
+    if u <= step_function.l
+        return 0.0
+    end
+    if u >= step_function.u
+        return 1.0
+    end
+    return (u - step_function.l) / (step_function.u - step_function.l)
 end
 
 function evaluate_step(u::T, step_functions::Vector{OneStepFunction}) where {T <: Real}
     out = 0.0
     ns = length(step_functions)
-    for i = 1:ns
+    for i in 1:ns
         out += evaluate_step(u, step_functions[i])
     end
-    out/ns
+    return out / ns
 end
 
 """
@@ -128,7 +132,7 @@ function create_step(fc::Forecast; horizon::Union{Int, Vector{Int}, UnitRange{In
     end
 
     iBin = sum(q .< truth)
-    OneStepFunction(α[iBin], α[iBin + 1])
+    return OneStepFunction(α[iBin], α[iBin + 1])
 end
 
 """
@@ -161,11 +165,11 @@ pit_values = pit_func.(0:0.1:1)
 function PIT_function(fc::Vector{Forecast}; horizon::Union{Int, Vector{Int}, UnitRange{Int}, Nothing} = nothing)
     steps = vcat((f -> create_step(f, horizon = horizon)).(fc)...)
     steps = Vector{OneStepFunction}(steps[.!ismissing.(steps)])
-    u -> evaluate_step(u, steps)
+    return u -> evaluate_step(u, steps)
 end
 
 function PIT_function(steps::Vector{OneStepFunction})
-    u -> evaluate_step(u, steps)
+    return u -> evaluate_step(u, steps)
 end
 
 """
@@ -218,9 +222,9 @@ function CvM_divergence(fc::Vector{Forecast}; horizon::Union{Int, Vector{Int}, U
     αs = sort(unique([0.0; 1.0; unique((x -> x.l).(steps)); unique((x -> x.u).(steps))]))
     τs = F.(αs)
     out = 0.0
-    for i in 1:length(αs)-1
-        α₁, α₂ = αs[i], αs[i+1]
-        τ₁, τ₂ = τs[i], τs[i+1]
+    for i in 1:(length(αs) - 1)
+        α₁, α₂ = αs[i], αs[i + 1]
+        τ₁, τ₂ = τs[i], τs[i + 1]
 
         h = α₂ - α₁
         m = (τ₂ - τ₁) / h
@@ -231,7 +235,7 @@ function CvM_divergence(fc::Vector{Forecast}; horizon::Union{Int, Vector{Int}, U
         out += I
     end
 
-    length(steps)*out
+    return length(steps) * out
 end
 
 function CvM_divergence(steps::Vector{OneStepFunction})
@@ -239,9 +243,9 @@ function CvM_divergence(steps::Vector{OneStepFunction})
     αs = sort(unique([0.0; 1.0; unique((x -> x.l).(steps)); unique((x -> x.u).(steps))]))
     τs = F.(αs)
     out = 0.0
-    for i in 1:length(αs)-1
-        α₁, α₂ = αs[i], αs[i+1]
-        τ₁, τ₂ = τs[i], τs[i+1]
+    for i in 1:(length(αs) - 1)
+        α₁, α₂ = αs[i], αs[i + 1]
+        τ₁, τ₂ = τs[i], τs[i + 1]
 
         h = α₂ - α₁
         m = (τ₂ - τ₁) / h
@@ -252,5 +256,5 @@ function CvM_divergence(steps::Vector{OneStepFunction})
         out += I
     end
 
-    length(steps)*out
+    return length(steps) * out
 end

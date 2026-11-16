@@ -42,9 +42,11 @@ method = EmpiricalInterval(min_observation=10)
 intervals = interval_forecast(fitted, method, 1:12)
 ```
 """
-function historical_forecast_errors(fitted::AbstractFittedModel,
+function historical_forecast_errors(
+        fitted::AbstractFittedModel,
         horizon::Union{Vector{Int}, Int, UnitRange{Int}},
-        min_observation::Int = 1)
+        min_observation::Int = 1
+    )
     if horizon isa Int
         horizon > 0 || throw(ArgumentError("Horizon must be positive"))
         horizon = collect(1:horizon)
@@ -59,16 +61,16 @@ function historical_forecast_errors(fitted::AbstractFittedModel,
     hMax = maximum(horizon)
     forecast_errors = [Float64[] for _ in 1:hMax]
 
-    for tEnd = length(fitted.x) - 1:-1:min_observation
+    for tEnd in (length(fitted.x) - 1):-1:min_observation
         xx = fitted.x[1:tEnd]
         if tEnd + hMax >= length(fitted.x)
-            xxNew = fitted.x[tEnd+1:end]
+            xxNew = fitted.x[(tEnd + 1):end]
             hKeep = tEnd .+ (1:hMax) .<= length(fitted.x)
         else
-            xxNew = fitted.x[tEnd+1:tEnd+hMax]
+            xxNew = fitted.x[(tEnd + 1):(tEnd + hMax)]
             hKeep = fill(true, hMax)
         end
-        
+
         newFit = nothing
         try
             newFit = fit_baseline(xx, fitted.model, setting = fitted.estimation_setting)
@@ -84,7 +86,7 @@ function historical_forecast_errors(fitted::AbstractFittedModel,
             # @warn "Forecast generation failed at tEnd=$tEnd: $e"
             continue  # Skip this time point
         end
-        
+
         obs = fitted.x[tEnd .+ (1:hMax)[hKeep]]
         errors = obs - pred
         for i in 1:sum(hKeep)

@@ -72,10 +72,12 @@ struct ETSModel{T1, T2, T3} <: AbstractBaselineModel where {T1 <: ErrorType, T2 
     season::T3
 end
 
-function ETSModel(;error::String = "A",
-                  trend::String = "N",
-                  season::String = "N",
-                  s::Int = 1)
+function ETSModel(;
+        error::String = "A",
+        trend::String = "N",
+        season::String = "N",
+        s::Int = 1
+    )
     if error == "A"
         et = AError()
     elseif error == "M"
@@ -119,9 +121,9 @@ State space representation for ETS models.
 Supports arithmetic operations (+, *) for state vector updates during filtering.
 """
 struct ETSSpace
-    L::Float64          
-    B::Float64          
-    S::Vector{Float64}  
+    L::Float64
+    B::Float64
+    S::Vector{Float64}
 end
 
 """
@@ -160,57 +162,57 @@ struct ETSParameter <: AbstractModelParameters
     z0::ETSSpace
 end
 
-function ETSθ2par(θ::Vector{T}, model::ETSModel{<: ErrorType, NTrend, NSeason}) where {T <: Real}
-    ETSParameter(ETSTuning(θ[1], 0, 0, 0), ETSSpace(θ[2], 0, [0]))
+function ETSθ2par(θ::Vector{T}, model::ETSModel{<:ErrorType, NTrend, NSeason}) where {T <: Real}
+    return ETSParameter(ETSTuning(θ[1], 0, 0, 0), ETSSpace(θ[2], 0, [0]))
 end
 
-function ETSθ2par(θ::Vector{T}, model::ETSModel{<: ErrorType, NTrend, <: Union{ASeason, Mseason}}) where {T <: Real}
-    ETSParameter(ETSTuning(θ[1], 0, θ[2], 0), ETSSpace(θ[3], 0, θ[4:3 + model.season.s]))
+function ETSθ2par(θ::Vector{T}, model::ETSModel{<:ErrorType, NTrend, <:Union{ASeason, Mseason}}) where {T <: Real}
+    return ETSParameter(ETSTuning(θ[1], 0, θ[2], 0), ETSSpace(θ[3], 0, θ[4:(3 + model.season.s)]))
 end
 
-function ETSθ2par(θ::Vector{T}, model::ETSModel{<: ErrorType, <: Union{ATrend, MTrend}, NSeason}) where {T <: Real}
-    ETSParameter(ETSTuning(θ[1], θ[2], 0, 0), ETSSpace(θ[3], θ[4], [0]))
+function ETSθ2par(θ::Vector{T}, model::ETSModel{<:ErrorType, <:Union{ATrend, MTrend}, NSeason}) where {T <: Real}
+    return ETSParameter(ETSTuning(θ[1], θ[2], 0, 0), ETSSpace(θ[3], θ[4], [0]))
 end
 
-function ETSθ2par(θ::Vector{T}, model::ETSModel{<: ErrorType, <: Union{ATrend, MTrend}, <: Union{ASeason, Mseason}}) where {T <: Real}
-    ETSParameter(ETSTuning(θ[1], θ[2], θ[3], 0), ETSSpace(θ[4], θ[5], θ[6:5 + model.season.s]))
+function ETSθ2par(θ::Vector{T}, model::ETSModel{<:ErrorType, <:Union{ATrend, MTrend}, <:Union{ASeason, Mseason}}) where {T <: Real}
+    return ETSParameter(ETSTuning(θ[1], θ[2], θ[3], 0), ETSSpace(θ[4], θ[5], θ[6:(5 + model.season.s)]))
 end
 
-function ETSθ2par(θ::Vector{T}, model::ETSModel{<: ErrorType, <: Union{AdTrend, MdTrend}, NSeason}) where {T <: Real}
-    ETSParameter(ETSTuning(θ[1], θ[2], 0, θ[3]), ETSSpace(θ[4], θ[5], [0]))
+function ETSθ2par(θ::Vector{T}, model::ETSModel{<:ErrorType, <:Union{AdTrend, MdTrend}, NSeason}) where {T <: Real}
+    return ETSParameter(ETSTuning(θ[1], θ[2], 0, θ[3]), ETSSpace(θ[4], θ[5], [0]))
 end
 
-function ETSθ2par(θ::Vector{T}, model::ETSModel{<: ErrorType, <: Union{AdTrend, MdTrend}, <: Union{ASeason, Mseason}}) where {T <: Real}
-    ETSParameter(ETSTuning(θ[1], θ[2], θ[3], θ[4]), ETSSpace(θ[5], θ[6], θ[7:6 + model.season.s]))
+function ETSθ2par(θ::Vector{T}, model::ETSModel{<:ErrorType, <:Union{AdTrend, MdTrend}, <:Union{ASeason, Mseason}}) where {T <: Real}
+    return ETSParameter(ETSTuning(θ[1], θ[2], θ[3], θ[4]), ETSSpace(θ[5], θ[6], θ[7:(6 + model.season.s)]))
 end
 
-function ETSpar2θ(par::ETSParameter, model::ETSModel{<: ErrorType, NTrend, NSeason})
-    [par.θ.α; par.z0.L]
+function ETSpar2θ(par::ETSParameter, model::ETSModel{<:ErrorType, NTrend, NSeason})
+    return [par.θ.α; par.z0.L]
 end
 
-function ETSpar2θ(par::ETSParameter, model::ETSModel{<: ErrorType, NTrend, <: Union{ASeason, Mseason}})
-    [par.θ.α; par.θ.β; par.z0.L; par.z0.S]
+function ETSpar2θ(par::ETSParameter, model::ETSModel{<:ErrorType, NTrend, <:Union{ASeason, Mseason}})
+    return [par.θ.α; par.θ.β; par.z0.L; par.z0.S]
 end
 
-function ETSpar2θ(par::ETSParameter, model::ETSModel{<: ErrorType, <: Union{ATrend, MTrend}, NSeason})
-    [par.θ.α; par.θ.β; par.z0.L; par.z0.B]
+function ETSpar2θ(par::ETSParameter, model::ETSModel{<:ErrorType, <:Union{ATrend, MTrend}, NSeason})
+    return [par.θ.α; par.θ.β; par.z0.L; par.z0.B]
 end
 
-function ETSpar2θ(par::ETSParameter, model::ETSModel{<: ErrorType, <: Union{ATrend, MTrend}, <: Union{ASeason, Mseason}})
-    [par.θ.α; par.θ.β; par.θ.γ; par.z0.L; par.z0.B; par.z0.S]
+function ETSpar2θ(par::ETSParameter, model::ETSModel{<:ErrorType, <:Union{ATrend, MTrend}, <:Union{ASeason, Mseason}})
+    return [par.θ.α; par.θ.β; par.θ.γ; par.z0.L; par.z0.B; par.z0.S]
 end
 
-function ETSpar2θ(par::ETSParameter, model::ETSModel{<: ErrorType, <: Union{AdTrend, MdTrend}, NSeason})
-    [par.θ.α; par.θ.β; par.θ.ϕ; par.z0.L; par.z0.B]
+function ETSpar2θ(par::ETSParameter, model::ETSModel{<:ErrorType, <:Union{AdTrend, MdTrend}, NSeason})
+    return [par.θ.α; par.θ.β; par.θ.ϕ; par.z0.L; par.z0.B]
 end
 
-function ETSpar2θ(par::ETSParameter, model::ETSModel{<: ErrorType, <: Union{AdTrend, MdTrend}, <: Union{ASeason, Mseason}})
-    [par.θ.α; par.θ.β; par.θ.γ; par.θ.ϕ; par.z0.L; par.z0.B; par.z0.S]
+function ETSpar2θ(par::ETSParameter, model::ETSModel{<:ErrorType, <:Union{AdTrend, MdTrend}, <:Union{ASeason, Mseason}})
+    return [par.θ.α; par.θ.β; par.θ.γ; par.θ.ϕ; par.z0.L; par.z0.B; par.z0.S]
 end
 
 # A-N-N
 function w_function(z::ETSSpace, model::ETSModel{AError, NTrend, NSeason}, coef::ETSTuning)
-    z.L
+    return z.L
 end
 
 function f_function(z::ETSSpace, model::ETSModel{AError, NTrend, NSeason}, coef::ETSTuning)
@@ -218,402 +220,402 @@ function f_function(z::ETSSpace, model::ETSModel{AError, NTrend, NSeason}, coef:
 end
 
 function g_function(z::ETSSpace, model::ETSModel{AError, NTrend, NSeason}, coef::ETSTuning)
-    ETSSpace(coef.α, 0.0, [0.0])
+    return ETSSpace(coef.α, 0.0, [0.0])
 end
 
 # A-N-A
 function w_function(z::ETSSpace, model::ETSModel{AError, NTrend, ASeason}, coef::ETSTuning)
-    z.L + z.S[end]
+    return z.L + z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{AError, NTrend, ASeason}, coef::ETSTuning)
-    ETSSpace(z.L, 0.0, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L, 0.0, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{AError, NTrend, ASeason}, coef::ETSTuning)
-    ETSSpace(coef.α, 0.0, [coef.γ; zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α, 0.0, [coef.γ; zeros(length(z.S) - 1)])
 end
 
 # A-N-M
 function w_function(z::ETSSpace, model::ETSModel{AError, NTrend, Mseason}, coef::ETSTuning)
-    z.L * z.S[end]
+    return z.L * z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{AError, NTrend, Mseason}, coef::ETSTuning)
-    ETSSpace(z.L, 0.0, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L, 0.0, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{AError, NTrend, Mseason}, coef::ETSTuning)
-    ETSSpace(coef.α / z.S[end], 0.0, [coef.γ / z.L; zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α / z.S[end], 0.0, [coef.γ / z.L; zeros(length(z.S) - 1)])
 end
 
 # A-A-N
 function w_function(z::ETSSpace, model::ETSModel{AError, ATrend, NSeason}, coef::ETSTuning)
-    z.L + z.B
+    return z.L + z.B
 end
 
 
 function f_function(z::ETSSpace, model::ETSModel{AError, ATrend, NSeason}, coef::ETSTuning)
-    ETSSpace(z.L + z.B, z.B, [0.0])
+    return ETSSpace(z.L + z.B, z.B, [0.0])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{AError, ATrend, NSeason}, coef::ETSTuning)
-    ETSSpace(coef.α, coef.β, [0.0])
+    return ETSSpace(coef.α, coef.β, [0.0])
 end
 
 # A-A-A
 function w_function(z::ETSSpace, model::ETSModel{AError, ATrend, ASeason}, coef::ETSTuning)
-    z.L + z.B + z.S[end]
+    return z.L + z.B + z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{AError, ATrend, ASeason}, coef::ETSTuning)
-    ETSSpace(z.L + z.B, z.B, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L + z.B, z.B, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{AError, ATrend, ASeason}, coef::ETSTuning)
-    ETSSpace(coef.α, coef.β, [coef.γ; zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α, coef.β, [coef.γ; zeros(length(z.S) - 1)])
 end
 
 # A-A-M
 function w_function(z::ETSSpace, model::ETSModel{AError, ATrend, Mseason}, coef::ETSTuning)
-    (z.L + z.B) * z.S[end]
+    return (z.L + z.B) * z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{AError, ATrend, Mseason}, coef::ETSTuning)
-    ETSSpace(z.L + z.B, z.B, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L + z.B, z.B, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{AError, ATrend, Mseason}, coef::ETSTuning)
-    ETSSpace(coef.α/z.S[end], coef.β/z.S[end], [coef.γ / (z.L + z.B); zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α / z.S[end], coef.β / z.S[end], [coef.γ / (z.L + z.B); zeros(length(z.S) - 1)])
 end
 
 # A-Ad-N
 function w_function(z::ETSSpace, model::ETSModel{AError, AdTrend, NSeason}, coef::ETSTuning)
-    z.L + coef.ϕ * z.B
+    return z.L + coef.ϕ * z.B
 end
 
 function f_function(z::ETSSpace, model::ETSModel{AError, AdTrend, NSeason}, coef::ETSTuning)
-    ETSSpace(z.L + coef.ϕ * z.B, coef.ϕ * z.B, [0.0])
+    return ETSSpace(z.L + coef.ϕ * z.B, coef.ϕ * z.B, [0.0])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{AError, AdTrend, NSeason}, coef::ETSTuning)
-    ETSSpace(coef.α, coef.β, [0.0])
+    return ETSSpace(coef.α, coef.β, [0.0])
 end
 
 # A-Ad-A
 function w_function(z::ETSSpace, model::ETSModel{AError, AdTrend, ASeason}, coef::ETSTuning)
-    z.L + coef.ϕ * z.B + z.S[end]
+    return z.L + coef.ϕ * z.B + z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{AError, AdTrend, ASeason}, coef::ETSTuning)
-    ETSSpace(z.L + coef.ϕ * z.B, coef.ϕ * z.B, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L + coef.ϕ * z.B, coef.ϕ * z.B, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{AError, AdTrend, ASeason}, coef::ETSTuning)
-    ETSSpace(coef.α, coef.β, [coef.γ; zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α, coef.β, [coef.γ; zeros(length(z.S) - 1)])
 end
 
 # A-Ad-M
 function w_function(z::ETSSpace, model::ETSModel{AError, AdTrend, Mseason}, coef::ETSTuning)
-    (z.L + coef.ϕ * z.B) * z.S[end]
+    return (z.L + coef.ϕ * z.B) * z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{AError, AdTrend, Mseason}, coef::ETSTuning)
-    ETSSpace(z.L + coef.ϕ * z.B, coef.ϕ * z.B, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L + coef.ϕ * z.B, coef.ϕ * z.B, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{AError, AdTrend, Mseason}, coef::ETSTuning)
-    ETSSpace(coef.α/z.S[end], coef.β/z.S[end], [coef.γ / (z.L + coef.ϕ * z.B); zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α / z.S[end], coef.β / z.S[end], [coef.γ / (z.L + coef.ϕ * z.B); zeros(length(z.S) - 1)])
 end
 
 # A-M-N
 function w_function(z::ETSSpace, model::ETSModel{AError, MTrend, NSeason}, coef::ETSTuning)
-    z.L * z.B
+    return z.L * z.B
 end
 
 function f_function(z::ETSSpace, model::ETSModel{AError, MTrend, NSeason}, coef::ETSTuning)
-    ETSSpace(z.L * z.B, z.B, [0.0])
+    return ETSSpace(z.L * z.B, z.B, [0.0])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{AError, MTrend, NSeason}, coef::ETSTuning)
-    ETSSpace(coef.α, coef.β / z.L, [0.0])
+    return ETSSpace(coef.α, coef.β / z.L, [0.0])
 end
 
 # A-M-A
 function w_function(z::ETSSpace, model::ETSModel{AError, MTrend, ASeason}, coef::ETSTuning)
-    z.L * z.B + z.S[end]
+    return z.L * z.B + z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{AError, MTrend, ASeason}, coef::ETSTuning)
-    ETSSpace(z.L * z.B, z.B, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L * z.B, z.B, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{AError, MTrend, ASeason}, coef::ETSTuning)
-    ETSSpace(coef.α, coef.β / z.L, [coef.γ; zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α, coef.β / z.L, [coef.γ; zeros(length(z.S) - 1)])
 end
 
 # A-M-M
 function w_function(z::ETSSpace, model::ETSModel{AError, MTrend, Mseason}, coef::ETSTuning)
-    z.L * z.B * z.S[end]
+    return z.L * z.B * z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{AError, MTrend, Mseason}, coef::ETSTuning)
-    ETSSpace(z.L * z.B, z.B, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L * z.B, z.B, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{AError, MTrend, Mseason}, coef::ETSTuning)
-    ETSSpace(coef.α/z.S[end], coef.β/(z.S[end]*z.L), [coef.γ / (z.L * z.B); zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α / z.S[end], coef.β / (z.S[end] * z.L), [coef.γ / (z.L * z.B); zeros(length(z.S) - 1)])
 end
 
 # A-Md-N
 function w_function(z::ETSSpace, model::ETSModel{AError, MdTrend, NSeason}, coef::ETSTuning)
-    z.L * z.B ^ coef.ϕ
+    return z.L * z.B^coef.ϕ
 end
 
 function f_function(z::ETSSpace, model::ETSModel{AError, MdTrend, NSeason}, coef::ETSTuning)
-    ETSSpace(z.L * z.B ^ coef.ϕ, z.B ^ coef.ϕ, [0.0])
+    return ETSSpace(z.L * z.B^coef.ϕ, z.B^coef.ϕ, [0.0])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{AError, MdTrend, NSeason}, coef::ETSTuning)
-    ETSSpace(coef.α, coef.β/z.L, [0.0])
+    return ETSSpace(coef.α, coef.β / z.L, [0.0])
 end
 
 # A-Md-A
 function w_function(z::ETSSpace, model::ETSModel{AError, MdTrend, ASeason}, coef::ETSTuning)
-    z.L * z.B ^ coef.ϕ + z.S[end]
+    return z.L * z.B^coef.ϕ + z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{AError, MdTrend, ASeason}, coef::ETSTuning)
-    ETSSpace(z.L * z.B ^ coef.ϕ, z.B ^ coef.ϕ, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L * z.B^coef.ϕ, z.B^coef.ϕ, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{AError, MdTrend, ASeason}, coef::ETSTuning)
-    ETSSpace(coef.α, coef.β / z.L, [coef.γ; zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α, coef.β / z.L, [coef.γ; zeros(length(z.S) - 1)])
 end
 
 # A-Md-M
 function w_function(z::ETSSpace, model::ETSModel{AError, MdTrend, Mseason}, coef::ETSTuning)
-    (z.L * z.B ^ coef.ϕ) * z.S[end]
+    return (z.L * z.B^coef.ϕ) * z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{AError, MdTrend, Mseason}, coef::ETSTuning)
-    ETSSpace(z.L * z.B ^ coef.ϕ, z.B ^ coef.ϕ, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L * z.B^coef.ϕ, z.B^coef.ϕ, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{AError, MdTrend, Mseason}, coef::ETSTuning)
-    ETSSpace(coef.α/z.S[end], coef.β/(z.S[end] * z.L), [coef.γ / (z.L * z.B^coef.ϕ); zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α / z.S[end], coef.β / (z.S[end] * z.L), [coef.γ / (z.L * z.B^coef.ϕ); zeros(length(z.S) - 1)])
 end
 
 ### Multiplicative errors
 
 # M-N-N
 function w_function(z::ETSSpace, model::ETSModel{MError, NTrend, NSeason}, coef::ETSTuning)
-    z.L
+    return z.L
 end
 
 function f_function(z::ETSSpace, model::ETSModel{MError, NTrend, NSeason}, coef::ETSTuning)
-    ETSSpace(z.L, 0.0, [0.0])
+    return ETSSpace(z.L, 0.0, [0.0])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{MError, NTrend, NSeason}, coef::ETSTuning)
-    ETSSpace(coef.α * z.L, 0.0, [0.0])
+    return ETSSpace(coef.α * z.L, 0.0, [0.0])
 end
 
 # M-N-A
 function w_function(z::ETSSpace, model::ETSModel{MError, NTrend, ASeason}, coef::ETSTuning)
-    z.L + z.S[end]
+    return z.L + z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{MError, NTrend, ASeason}, coef::ETSTuning)
-    ETSSpace(z.L, 0.0, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L, 0.0, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{MError, NTrend, ASeason}, coef::ETSTuning)
-    ETSSpace(coef.α * (z.L + z.S[end]), 0.0, [coef.γ * (z.L + z.S[end]); zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α * (z.L + z.S[end]), 0.0, [coef.γ * (z.L + z.S[end]); zeros(length(z.S) - 1)])
 end
 
 # M-N-M
 function w_function(z::ETSSpace, model::ETSModel{MError, NTrend, Mseason}, coef::ETSTuning)
-    z.L * z.S[end]
+    return z.L * z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{MError, NTrend, Mseason}, coef::ETSTuning)
-    ETSSpace(z.L, 0.0, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L, 0.0, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{MError, NTrend, Mseason}, coef::ETSTuning)
-    ETSSpace(z.L * coef.α, 0.0, [coef.γ * z.S[end]; zeros(length(z.S) - 1)])
+    return ETSSpace(z.L * coef.α, 0.0, [coef.γ * z.S[end]; zeros(length(z.S) - 1)])
 end
 
 # M-A-N
 function w_function(z::ETSSpace, model::ETSModel{MError, ATrend, NSeason}, coef::ETSTuning)
-    z.L + z.B
+    return z.L + z.B
 end
 
 function f_function(z::ETSSpace, model::ETSModel{MError, ATrend, NSeason}, coef::ETSTuning)
-    ETSSpace(z.L + z.B, z.B, [0.0])
+    return ETSSpace(z.L + z.B, z.B, [0.0])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{MError, ATrend, NSeason}, coef::ETSTuning)
-    ETSSpace(coef.α * (z.L + z.B), coef.β * (z.L + z.B), [0.0])
+    return ETSSpace(coef.α * (z.L + z.B), coef.β * (z.L + z.B), [0.0])
 end
 
 # M-A-A
 function w_function(z::ETSSpace, model::ETSModel{MError, ATrend, ASeason}, coef::ETSTuning)
-    z.L + z.B + z.S[end]
+    return z.L + z.B + z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{MError, ATrend, ASeason}, coef::ETSTuning)
-    ETSSpace(z.L + z.B, z.B, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L + z.B, z.B, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{MError, ATrend, ASeason}, coef::ETSTuning)
     scl = (z.L + z.B + z.S[end])
-    ETSSpace(coef.α * scl, coef.β * scl, [coef.γ * scl; zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α * scl, coef.β * scl, [coef.γ * scl; zeros(length(z.S) - 1)])
 end
 
 # M-A-M
 function w_function(z::ETSSpace, model::ETSModel{MError, ATrend, Mseason}, coef::ETSTuning)
-    (z.L + z.B) * z.S[end]
+    return (z.L + z.B) * z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{MError, ATrend, Mseason}, coef::ETSTuning)
-    ETSSpace(z.L + z.B, z.B, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L + z.B, z.B, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{MError, ATrend, Mseason}, coef::ETSTuning)
     scl = z.L + z.B
-    ETSSpace(coef.α * scl, coef.β * scl, [coef.γ * z.S[end]; zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α * scl, coef.β * scl, [coef.γ * z.S[end]; zeros(length(z.S) - 1)])
 end
 
 # M-Ad-N
 function w_function(z::ETSSpace, model::ETSModel{MError, AdTrend, NSeason}, coef::ETSTuning)
-    z.L + coef.ϕ * z.B
+    return z.L + coef.ϕ * z.B
 end
 
 function f_function(z::ETSSpace, model::ETSModel{MError, AdTrend, NSeason}, coef::ETSTuning)
-    ETSSpace(z.L + coef.ϕ * z.B, coef.ϕ * z.B, [0.0])
+    return ETSSpace(z.L + coef.ϕ * z.B, coef.ϕ * z.B, [0.0])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{MError, AdTrend, NSeason}, coef::ETSTuning)
     scl = z.L + coef.ϕ * z.B
-    ETSSpace(coef.α * scl, coef.β * scl, [0.0])
+    return ETSSpace(coef.α * scl, coef.β * scl, [0.0])
 end
 
 # M-Ad-A
 function w_function(z::ETSSpace, model::ETSModel{MError, AdTrend, ASeason}, coef::ETSTuning)
-    z.L + coef.ϕ * z.B + z.S[end]
+    return z.L + coef.ϕ * z.B + z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{MError, AdTrend, ASeason}, coef::ETSTuning)
-    ETSSpace(z.L + coef.ϕ * z.B, coef.ϕ * z.B, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L + coef.ϕ * z.B, coef.ϕ * z.B, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{MError, AdTrend, ASeason}, coef::ETSTuning)
     scl = z.L + coef.ϕ * z.B + z.S[end]
-    ETSSpace(coef.α * scl, coef.β * scl, [coef.γ * scl; zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α * scl, coef.β * scl, [coef.γ * scl; zeros(length(z.S) - 1)])
 end
 
 # M-Ad-M
 function w_function(z::ETSSpace, model::ETSModel{MError, AdTrend, Mseason}, coef::ETSTuning)
-    (z.L + coef.ϕ * z.B) * z.S[end]
+    return (z.L + coef.ϕ * z.B) * z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{MError, AdTrend, Mseason}, coef::ETSTuning)
-    ETSSpace(z.L + coef.ϕ * z.B, coef.ϕ * z.B, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L + coef.ϕ * z.B, coef.ϕ * z.B, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{MError, AdTrend, Mseason}, coef::ETSTuning)
     scl = z.L + coef.ϕ * z.B
-    ETSSpace(coef.α * scl, coef.β * scl, [coef.γ * z.S[end]; zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α * scl, coef.β * scl, [coef.γ * z.S[end]; zeros(length(z.S) - 1)])
 end
 
 # M-M-N
 function w_function(z::ETSSpace, model::ETSModel{MError, MTrend, NSeason}, coef::ETSTuning)
-    z.L * z.B
+    return z.L * z.B
 end
 
 function f_function(z::ETSSpace, model::ETSModel{MError, MTrend, NSeason}, coef::ETSTuning)
-    ETSSpace(z.L * z.B, z.B, [0.0])
+    return ETSSpace(z.L * z.B, z.B, [0.0])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{MError, MTrend, NSeason}, coef::ETSTuning)
-    ETSSpace(coef.α * z.L * z.B, coef.β * z.B, [0.0])
+    return ETSSpace(coef.α * z.L * z.B, coef.β * z.B, [0.0])
 end
 
 # M-M-A
 function w_function(z::ETSSpace, model::ETSModel{MError, MTrend, ASeason}, coef::ETSTuning)
-    z.L * z.B + z.S[end]
+    return z.L * z.B + z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{MError, MTrend, ASeason}, coef::ETSTuning)
-    ETSSpace(z.L * z.B, z.B, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L * z.B, z.B, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{MError, MTrend, ASeason}, coef::ETSTuning)
     scl = z.L * z.B + z.S[end]
-    ETSSpace(coef.α * scl, coef.β * scl / z.L, [coef.γ * scl; zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α * scl, coef.β * scl / z.L, [coef.γ * scl; zeros(length(z.S) - 1)])
 end
 
 # M-M-M
 function w_function(z::ETSSpace, model::ETSModel{MError, MTrend, Mseason}, coef::ETSTuning)
-    z.L * z.B * z.S[end]
+    return z.L * z.B * z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{MError, MTrend, Mseason}, coef::ETSTuning)
-    ETSSpace(z.L * z.B, z.B, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L * z.B, z.B, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{MError, MTrend, Mseason}, coef::ETSTuning)
-    ETSSpace(coef.α * z.L * z.B, coef.β * z.B, [coef.γ * z.S[end]; zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α * z.L * z.B, coef.β * z.B, [coef.γ * z.S[end]; zeros(length(z.S) - 1)])
 end
 
 # M-Md-N
 function w_function(z::ETSSpace, model::ETSModel{MError, MdTrend, NSeason}, coef::ETSTuning)
-    z.L * z.B ^ coef.ϕ
+    return z.L * z.B^coef.ϕ
 end
 
 function f_function(z::ETSSpace, model::ETSModel{MError, MdTrend, NSeason}, coef::ETSTuning)
-    ETSSpace(z.L * z.B ^ coef.ϕ, z.B ^ coef.ϕ, [0.0])
+    return ETSSpace(z.L * z.B^coef.ϕ, z.B^coef.ϕ, [0.0])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{MError, MdTrend, NSeason}, coef::ETSTuning)
-    ETSSpace(coef.α * z.L * z.B ^ coef.ϕ, coef.β * z.B ^ coef.ϕ, [0.0])
+    return ETSSpace(coef.α * z.L * z.B^coef.ϕ, coef.β * z.B^coef.ϕ, [0.0])
 end
 
 # M-Md-A
 function w_function(z::ETSSpace, model::ETSModel{MError, MdTrend, ASeason}, coef::ETSTuning)
-    z.L * z.B ^ coef.ϕ + z.S[end]
+    return z.L * z.B^coef.ϕ + z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{MError, MdTrend, ASeason}, coef::ETSTuning)
-    ETSSpace(z.L * z.B ^ coef.ϕ, z.B ^ coef.ϕ, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L * z.B^coef.ϕ, z.B^coef.ϕ, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{MError, MdTrend, ASeason}, coef::ETSTuning)
-    scl = z.L * z.B ^ coef.ϕ + z.S[end]
-    ETSSpace(coef.α * scl, coef.β * scl / z.L, [coef.γ * scl; zeros(length(z.S) - 1)])
+    scl = z.L * z.B^coef.ϕ + z.S[end]
+    return ETSSpace(coef.α * scl, coef.β * scl / z.L, [coef.γ * scl; zeros(length(z.S) - 1)])
 end
 
 # M-Md-M
 function w_function(z::ETSSpace, model::ETSModel{MError, MdTrend, Mseason}, coef::ETSTuning)
-    (z.L * z.B ^ coef.ϕ) * z.S[end]
+    return (z.L * z.B^coef.ϕ) * z.S[end]
 end
 
 function f_function(z::ETSSpace, model::ETSModel{MError, MdTrend, Mseason}, coef::ETSTuning)
-    ETSSpace(z.L * z.B ^ coef.ϕ, z.B ^ coef.ϕ, [z.S[end]; z.S[1:end-1]])
+    return ETSSpace(z.L * z.B^coef.ϕ, z.B^coef.ϕ, [z.S[end]; z.S[1:(end - 1)]])
 end
 
 function g_function(z::ETSSpace, model::ETSModel{MError, MdTrend, Mseason}, coef::ETSTuning)
-    ETSSpace(coef.α * z.L * z.B ^ coef.ϕ, coef.β * z.B ^ coef.ϕ, [coef.γ * z.S[end]; zeros(length(z.S) - 1)])
+    return ETSSpace(coef.α * z.L * z.B^coef.ϕ, coef.β * z.B^coef.ϕ, [coef.γ * z.S[end]; zeros(length(z.S) - 1)])
 end
 
-function r_function(z::ETSSpace, model::ETSModel{AError, <: Union{NTrend, ATrend, MTrend, AdTrend, MdTrend}, <: Union{NSeason, ASeason, Mseason}}, coef::ETSTuning)
-    1.0
+function r_function(z::ETSSpace, model::ETSModel{AError, <:Union{NTrend, ATrend, MTrend, AdTrend, MdTrend}, <:Union{NSeason, ASeason, Mseason}}, coef::ETSTuning)
+    return 1.0
 end
 
-function r_function(z::ETSSpace, model::ETSModel{MError, <: Union{NTrend, ATrend, MTrend, AdTrend, MdTrend}, <: Union{NSeason, ASeason, Mseason}}, coef::ETSTuning)
-    w_function(z, model, coef)
+function r_function(z::ETSSpace, model::ETSModel{MError, <:Union{NTrend, ATrend, MTrend, AdTrend, MdTrend}, <:Union{NSeason, ASeason, Mseason}}, coef::ETSTuning)
+    return w_function(z, model, coef)
 end
 
 
@@ -651,7 +653,7 @@ struct ETSFiltered
     xHat::Vector{Float64}
     ϵ::Vector{Float64}
     function ETSFiltered(z0::ETSSpace, z::Vector{ETSSpace}, xHat, ϵ)
-        new(z0, z, Float64.(xHat), Float64.(ϵ))
+        return new(z0, z, Float64.(xHat), Float64.(ϵ))
     end
 end
 
@@ -687,20 +689,20 @@ function ETSFilter(x::Vector{T1}, model::ETSModel, par::ETSParameter) where {T1 
     if typeof(model.error) == AError
         ϵ[1] = x[1] - xHat[1]
     else
-        ϵ[1] = (x[1] - xHat[1])/xHat[1]
-    end    
-    z[1] = f_function(z0, model, par.θ) + g_function(z0, model, par.θ)*ϵ[1]
+        ϵ[1] = (x[1] - xHat[1]) / xHat[1]
+    end
+    z[1] = f_function(z0, model, par.θ) + g_function(z0, model, par.θ) * ϵ[1]
 
-    for t = 2:T
-        xHat[t] = w_function(z[t-1], model, par.θ)
+    for t in 2:T
+        xHat[t] = w_function(z[t - 1], model, par.θ)
         if typeof(model.error) == AError
             ϵ[t] = x[t] - xHat[t]
         else
-            ϵ[t] = (x[t] - xHat[t])/xHat[t]
-        end    
-        z[t] = f_function(z[t-1], model, par.θ) + g_function(z[t-1], model, par.θ)*ϵ[t]
+            ϵ[t] = (x[t] - xHat[t]) / xHat[t]
+        end
+        z[t] = f_function(z[t - 1], model, par.θ) + g_function(z[t - 1], model, par.θ) * ϵ[t]
     end
-    ETSFiltered(z0, z, xHat, ϵ)
+    return ETSFiltered(z0, z, xHat, ϵ)
 end
 
 """
@@ -727,9 +729,9 @@ function getInitial(x::Vector{T1}, model::ETSModel) where {T1 <: Real}
     T = length(x)
     if !(model.season isa NSeason)
         s = model.season.s
-        if length(x) > 2*s
-            ff = (t -> mean(x[t:t+2*s-1])).(1:T-2*s+1)
-            tSeq = (1:T-2*s+1) .+ s
+        if length(x) > 2 * s
+            ff = (t -> mean(x[t:(t + 2 * s - 1)])).(1:(T - 2 * s + 1))
+            tSeq = (1:(T - 2 * s + 1)) .+ s
             if model.season isa ASeason
                 xx = x[tSeq] .- ff
                 sRaw = (ss -> mean(xx[ss:s:length(xx)])).(1:s)
@@ -751,19 +753,19 @@ function getInitial(x::Vector{T1}, model::ETSModel) where {T1 <: Real}
     nxx = minimum([10, length(xx)])
     yy = xx[1:nxx]
     X = [ones(nxx) collect(1:nxx)]
-    beta = inv(X'X)*X'yy
+    beta = inv(X'X) * X'yy
     l = beta[1]
     if model.trend isa ATrend || model.trend isa AdTrend
         b = beta[2]
     elseif model.trend isa MTrend || model.trend isa MdTrend
-        b = 1 + beta[2]/beta[1]
+        b = 1 + beta[2] / beta[1]
     else
         b = 0.0
     end
-    ETSParameter(coef, ETSSpace(l, b, sNorm))
+    return ETSParameter(coef, ETSSpace(l, b, sNorm))
 end
 
-function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64})  where {T1 <: Real}
+function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64}) where {T1 <: Real}
     par = ETSθ2par(parVec, model)
 
     # Nelder-Mead stops once the objective values over the simplex are close
@@ -773,17 +775,17 @@ function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64})  where {
     # penalty that grows with the violation keeps the spread finite and pushes
     # the simplex back inside the constraints.
     violation = max(0, -par.θ.α) + max(0, par.θ.α - 1) +
-                max(0, -par.θ.β) + max(0, par.θ.β - par.θ.α) +
-                max(0, -par.θ.γ) + max(0, par.θ.γ - (1 - par.θ.α)) +
-                max(0, -par.θ.ϕ) + max(0, par.θ.ϕ - 1)
+        max(0, -par.θ.β) + max(0, par.θ.β - par.θ.α) +
+        max(0, -par.θ.γ) + max(0, par.θ.γ - (1 - par.θ.α)) +
+        max(0, -par.θ.ϕ) + max(0, par.θ.ϕ - 1)
     if violation > 0
-        return 1e8 * (1 + violation)
+        return 1.0e8 * (1 + violation)
     end
 
     filtered = ETSFilter(x, model, par)
     ϵ = filtered.ϵ
-    rr = [r_function(filtered.z0, model, par.θ); (zz -> r_function(zz, model, par.θ)).(filtered.z[1:end-1])]
-    return length(x)*log(sum(ϵ.^2)) + 2*sum(log.(abs.(rr)))
+    rr = [r_function(filtered.z0, model, par.θ); (zz -> r_function(zz, model, par.θ)).(filtered.z[1:(end - 1)])]
+    return length(x) * log(sum(ϵ .^ 2)) + 2 * sum(log.(abs.(rr)))
 end
 
 struct ETSEstimationSetting <: AbstractEstimationSetting
@@ -807,15 +809,17 @@ struct ETSFitted <: AbstractFittedModel
     par::ETSParameter
     estimation_setting::ETSEstimationSetting
     temporal_info::TemporalInfo
-    function ETSFitted(x,
+    function ETSFitted(
+            x,
             model::ETSModel,
             par::ETSParameter,
             estimation_setting::ETSEstimationSetting,
-            temporal_info::TemporalInfo = TemporalInfo())
+            temporal_info::TemporalInfo = TemporalInfo()
+        )
         if !(x isa Vector{Float64})
             x = Float64.(x)
         end
-        new(x, model, par, estimation_setting, temporal_info)
+        return new(x, model, par, estimation_setting, temporal_info)
     end
 end
 
@@ -853,17 +857,19 @@ println("Trend smoothing: ", fitted.par.θ.β)
 println("Seasonal smoothing: ", fitted.par.θ.γ)
 ```
 """
-function fit_baseline(x::Vector{T1},
+function fit_baseline(
+        x::Vector{T1},
         model::ETSModel;
         setting::Union{ETSEstimationSetting, Nothing} = ETSEstimationSetting(),
-        temporal_info::TemporalInfo = TemporalInfo()) where {T1 <: Real}
+        temporal_info::TemporalInfo = TemporalInfo()
+    ) where {T1 <: Real}
     if isnothing(setting)
         setting = ETSEstimationSetting()
     end
     init = getInitial(x, model)
     initVec = ETSpar2θ(init, model)
     estVec = optimize(vars -> L_fun(x, model, vars), initVec).minimizer
-    ETSFitted(x, model, ETSθ2par(estVec, model), setting, temporal_info)
+    return ETSFitted(x, model, ETSθ2par(estVec, model), setting, temporal_info)
 end
 
 """
@@ -912,7 +918,7 @@ function point_forecast(fitted::ETSFitted, horizon::Union{Vector{Int}, Int, Unit
 
     σ = std(filtered.ϵ) + 0.01
     zCurr = filtered.z[end]
-    for hh = 1:hMax
+    for hh in 1:hMax
         fc_point[hh] = w_function(zCurr, fitted.model, fitted.par.θ)
         zCurr = f_function(zCurr, fitted.model, fitted.par.θ)
     end
@@ -964,12 +970,14 @@ fc_point, fc_median, fc_intervals, trajectories = interval_forecast(
 seasonal_pattern = mean(trajectories[:, 1:12], dims=1)
 ```
 """
-function interval_forecast(fitted::ETSFitted,
-    method::ModelTrajectoryInterval,
-    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
-    levels::Vector{Float64} = [0.95];
-    alpha_precision::Int = 10,
-    include_median::Bool = true)
+function interval_forecast(
+        fitted::ETSFitted,
+        method::ModelTrajectoryInterval,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+        levels::Vector{Float64} = [0.95];
+        alpha_precision::Int = 10,
+        include_median::Bool = true
+    )
 
     if horizon isa Int
         horizon = collect(1:horizon)
@@ -988,13 +996,13 @@ function interval_forecast(fitted::ETSFitted,
 
     # Create point forecasts
     fc_point = point_forecast(fitted, horizon)
-    
+
     # Structure level and probabilities
     if include_median
         levels = [levels; 0.0]
     end
     levels = sort(levels)
-    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l*0.5).(levels)...), digits = alpha_precision)))
+    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l * 0.5).(levels)...), digits = alpha_precision)))
     hMax = maximum(horizon)
 
     # Creating trajectories
@@ -1006,29 +1014,29 @@ function interval_forecast(fitted::ETSFitted,
     newFiltered = zeros(hMax)
     σ = std(filtered.ϵ) + 0.01
     zCurr = filtered.z[end]
-    for hh = 1:hMax
+    for hh in 1:hMax
         newFiltered[hh] = w_function(zCurr, fitted.model, fitted.par.θ)
         zCurr = f_function(zCurr, fitted.model, fitted.par.θ)
     end
 
     trajectories = zeros(method.n_trajectories, hMax)
-    for i = 1:method.n_trajectories
+    for i in 1:method.n_trajectories
         ϵ = zeros(hMax)
         zCurr = filtered.z[end]
-        for hh = 1:hMax
+        for hh in 1:hMax
             if method.positivity_correction == :truncate
                 wCurr = w_function(zCurr, fitted.model, fitted.par.θ)
                 rCurr = r_function(zCurr, fitted.model, fitted.par.θ)
                 if rCurr > 0
-                    ϵ[hh] = rand(truncated(Normal(0, σ), -wCurr/rCurr, Inf))
+                    ϵ[hh] = rand(truncated(Normal(0, σ), -wCurr / rCurr, Inf))
                 else # Might not happen?
-                    ϵ[hh] = rand(truncated(Normal(0, σ), -Inf, -wCurr/rCurr))
+                    ϵ[hh] = rand(truncated(Normal(0, σ), -Inf, -wCurr / rCurr))
                 end
             else
                 ϵ[hh] = rand(Normal(0, σ))
             end
-            trajectories[i, hh] = w_function(zCurr, fitted.model, fitted.par.θ) + r_function(zCurr, fitted.model, fitted.par.θ)*ϵ[hh]
-            zCurr = f_function(zCurr, fitted.model, fitted.par.θ) + g_function(zCurr, fitted.model, fitted.par.θ)*ϵ[hh]
+            trajectories[i, hh] = w_function(zCurr, fitted.model, fitted.par.θ) + r_function(zCurr, fitted.model, fitted.par.θ) * ϵ[hh]
+            zCurr = f_function(zCurr, fitted.model, fitted.par.θ) + g_function(zCurr, fitted.model, fitted.par.θ) * ϵ[hh]
 
             if method.positivity_correction == :zero_floor
                 trajectories[i, hh] = max(trajectories[i, hh], 0.0)
@@ -1048,17 +1056,17 @@ function interval_forecast(fitted::ETSFitted,
     # Compute intervals from trajectories
     fc_intervals = Vector{ForecastInterval}(undef, length(horizon))
     fc_median = include_median ? zeros(length(horizon)) : nothing
-    
+
     if include_median
         i_median = findfirst(alpha .== 0.5)
     end
 
-    for i = 1:length(horizon)
-        all_quantiles = [quantile(trajectories[:, i], q) for q = alpha]
+    for i in 1:length(horizon)
+        all_quantiles = [quantile(trajectories[:, i], q) for q in alpha]
         ls = reverse(all_quantiles[alpha .< 0.5])
         us = all_quantiles[alpha .> 0.5]
         fc_intervals[i] = ForecastInterval(ls, us, levels[levels .> 0])
-        
+
         if include_median
             fc_median[i] = all_quantiles[i_median]
         end

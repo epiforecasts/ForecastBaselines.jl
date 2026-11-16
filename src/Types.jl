@@ -129,7 +129,7 @@ struct ForecastInterval
     lower::Vector{Float64}
     upper::Vector{Float64}
     levels::Vector{Float64}
-    
+
     function ForecastInterval(lower, upper, levels)
         if !(lower isa Vector) & (length(lower) == 1)
             lower = [lower]
@@ -143,43 +143,45 @@ struct ForecastInterval
 
         all(lower .<= upper) ||
             throw(ArgumentError("Lower bounds must be smaller than upper bounds"))
-        length(lower) == length(upper) == length(levels) || 
+        length(lower) == length(upper) == length(levels) ||
             throw(ArgumentError("All vectors must have the same length"))
-        all(0 .<= levels .<= 1) || 
+        all(0 .<= levels .<= 1) ||
             throw(ArgumentError("Confidence levels must be between 0 and 1"))
-        new(lower, upper, levels)
+        return new(lower, upper, levels)
     end
 end
 
 function validate_forecast_consistency(horizon, mean, median, intervals, truth, trajectories, target_date)
     provided_lengths = Int[]
-    
+
     !isnothing(horizon) && push!(provided_lengths, length(horizon))
     !isnothing(mean) && push!(provided_lengths, length(mean))
     !isnothing(median) && push!(provided_lengths, length(median))
     !isnothing(intervals) && push!(provided_lengths, length(intervals))
-    
+
     if length(unique(provided_lengths)) > 1
         throw(ArgumentError("Provided forecast components must have consistent lengths: $provided_lengths"))
     end
-    
+
     n = isempty(provided_lengths) ? 0 : first(provided_lengths)
-    
+
     if !isnothing(truth) && length(truth) != n
         throw(ArgumentError("Truth length ($(length(truth))) must match forecast length ($n)"))
     end
-    
+
     if !isnothing(trajectories) && size(trajectories, 2) != n
         throw(ArgumentError("Trajectories columns ($(size(trajectories, 2))) must match forecast length ($n)"))
     end
-    
-    if !isnothing(target_date) && length(target_date) != n
+
+    return if !isnothing(target_date) && length(target_date) != n
         throw(ArgumentError("Target date length ($(length(target_date))) must match forecast length ($n)"))
     end
 end
 
-function generate_target_dates(reference_date::Union{DateTime,Date,Int}, horizon::Vector{Int}, 
-                              resolution::Union{DatePeriod,Int})
+function generate_target_dates(
+        reference_date::Union{DateTime, Date, Int}, horizon::Vector{Int},
+        resolution::Union{DatePeriod, Int}
+    )
     if reference_date isa Int
         return [reference_date + h * resolution for h in horizon]
     else
@@ -193,14 +195,14 @@ function generate_target_dates(reference_date::Union{DateTime,Date,Int}, horizon
 end
 
 function validate_temporal_consistency(horizon, reference_date, target_date, resolution)
-    if !isnothing(horizon) && !isnothing(reference_date) && !isnothing(target_date)
+    return if !isnothing(horizon) && !isnothing(reference_date) && !isnothing(target_date)
         expected_targets = generate_target_dates(reference_date, horizon, resolution)
-        
+
         if typeof(target_date) != typeof(expected_targets)
             @warn "Target date type ($(typeof(target_date))) doesn't match expected type ($(typeof(expected_targets))) based on reference_date type"
-            return  
+            return
         end
-        
+
         if target_date != expected_targets
             @warn "Target dates don't match expected dates based on reference_date, horizon, and resolution"
             @warn "Expected: $expected_targets"
@@ -277,9 +279,11 @@ struct Forecast <: AbstractForecast
     target_date::Union{Vector{DateTime}, Vector{Date}, Vector{Time}, Vector{Int}, Nothing}
     resolution::Union{DatePeriod, TimePeriod, Int}
     model_name::String
-    
-    function Forecast(;horizon = nothing, mean = nothing, median = nothing, intervals = nothing, truth=nothing, 
-                     trajectories=nothing, reference_date = nothing, target_date = nothing, resolution = 1, model_name="Unnamed Model")
+
+    function Forecast(;
+            horizon = nothing, mean = nothing, median = nothing, intervals = nothing, truth = nothing,
+            trajectories = nothing, reference_date = nothing, target_date = nothing, resolution = 1, model_name = "Unnamed Model"
+        )
         if horizon isa Integer
             horizon = [horizon]
         elseif !(horizon isa Vector{Int}) & !isnothing(horizon)
@@ -316,19 +320,21 @@ struct Forecast <: AbstractForecast
 
         forecast_fields = [horizon, mean, median, intervals]
         has_forecast_data = any(!isnothing, forecast_fields)
-        
+
         if has_forecast_data
             validate_forecast_consistency(horizon, mean, median, intervals, truth, trajectories, target_date)
-            
+
             if !isnothing(reference_date) && !isnothing(horizon) && isnothing(target_date)
                 target_date = generate_target_dates(reference_date, horizon, resolution)
             end
-            
+
             validate_temporal_consistency(horizon, reference_date, target_date, resolution)
         end
-        
-        new(horizon, mean, median, intervals, truth, trajectories, 
-            reference_date, target_date, resolution, model_name)
+
+        return new(
+            horizon, mean, median, intervals, truth, trajectories,
+            reference_date, target_date, resolution, model_name
+        )
     end
 end
 
@@ -413,7 +419,7 @@ struct TemporalInfo
         ((start isa Int) || (start isa TimeType)) || throw(ArgumentError("Invalid start, must be time (string) or integer"))
         ((resolution isa Int) || (resolution isa DatePeriod) || (resolution isa TimePeriod)) || throw(ArgumentError("Invalid resolution"))
 
-        !xor(start isa Int,  resolution isa Int) || throw(ArgumentError("Start and resolution do not match"))
+        !xor(start isa Int, resolution isa Int) || throw(ArgumentError("Start and resolution do not match"))
 
         if (start isa Date) & (resolution isa TimePeriod)
             start = DateTime(start)
@@ -423,7 +429,6 @@ struct TemporalInfo
             throw(ArgumentError("Start and resolution do not match"))
         end
 
-        new(start, resolution)
+        return new(start, resolution)
     end
 end
-
