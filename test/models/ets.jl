@@ -75,27 +75,23 @@ end
     end
 end
 
-@testitem "A multiplicative trend fit either forecasts or fails at fitting" setup = [TestData] tags = [:models, :ets] begin
+@testitem "Damped multiplicative trends fit from a negative starting level or trend" setup = [TestData] tags = [:models, :ets] begin
     using Random
-    # The regression getInitial uses has a negative intercept here, so the trend state
-    # starts negative.
+    # getInitial starts the trend below zero on the rising series and the level below
+    # zero on the falling one with a seasonal component.
     Random.seed!(1)
-    x = 2.0 .* (1:40) .- 1 .+ 0.1 .* randn(40)
-    @test ForecastBaselines.getInitial(x, ETSModel(trend = "Md")).z0.B < 0
-    for error in ("A", "M"), trend in ("M", "Md")
-        model = ETSModel(error = error, trend = trend)
-        fitted = try
-            fit_baseline(x, model)
-        catch err
-            err
-        end
-        @testset "$error,$trend" begin
-            if fitted isa Exception
-                @test fitted isa ArgumentError
-            else
-                @test fitted.par.z0.B > 0
-                @test all(isfinite, point_forecast(fitted, 1:3))
-            end
+    rising = 2.0 .* (1:40) .- 1 .+ 0.1 .* randn(40)
+    Random.seed!(7)
+    falling = collect(300.0 .- 2.25 .* (1:60) .+ randn(60))
+    @test ForecastBaselines.getInitial(rising, ETSModel(trend = "Md")).z0.B < 0
+    @test ForecastBaselines.getInitial(falling, ETSModel(trend = "Md", season = "A", s = 12)).z0.L < 0
+    for (name, x) in (("rising", rising), ("falling", falling)), error in ("A", "M"), season in ("N", "A")
+        model = ETSModel(error = error, trend = "Md", season = season, s = 12)
+        @testset "$name,$error,Md,$season" begin
+            fitted = fit_baseline(x, model)
+            @test fitted.par.z0.L > 0
+            @test fitted.par.z0.B > 0
+            @test all(isfinite, point_forecast(fitted, 1:3))
         end
     end
 end
