@@ -111,6 +111,7 @@ end
 end
 
 @testitem "ETS fits and simulates every variant" setup = [TestData] tags = [:models, :ets] begin
+    using Distributions: std
     for error in ("A", "M"), trend in ("N", "A", "Ad", "M", "Md"), season in ("N", "A", "M")
         model = ETSModel(error = error, trend = trend, season = season, s = 12)
         fitted = fit_baseline(seasonal_data, model)
@@ -122,8 +123,23 @@ end
         @testset "$error,$trend,$season" begin
             @test all(isfinite, fc.mean)
             @test all(i -> all(i.lower .<= i.upper), fc.intervals)
-            # The wider interval contains the narrower one at every horizon.
             @test all(i -> i.lower[2] <= i.lower[1] && i.upper[1] <= i.upper[2], fc.intervals)
+            # One step ahead a trajectory is the point forecast plus r(z) times noise
+            # on the scale of the in-sample residuals, so the 90% interval is about
+            # 2 * 1.645 * sd(residuals) * |r(z)| wide. Half of that is a floor that
+            # simulation without noise cannot reach.
+            filtered = ForecastBaselines.ETSFilter(seasonal_data, model, fitted.par)
+            r = ForecastBaselines.r_function(filtered.z[end], model, fitted.par.θ)
+            width(i) = i.upper[2] - i.lower[2]
+            @test width(fc.intervals[1]) > 0.5 * 2 * 1.645 * std(filtered.ϵ) * abs(r)
+            # Uncertainty grows with the horizon.
+            if (error, trend, season) == ("M", "Md", "A")
+                # Nelder-Mead stops at its iteration limit on a poor fit here, with a
+                # horizon-1 interval far wider than the data.
+                @test_broken width(fc.intervals[6]) > width(fc.intervals[1])
+            else
+                @test width(fc.intervals[6]) > width(fc.intervals[1])
+            end
         end
     end
 end
