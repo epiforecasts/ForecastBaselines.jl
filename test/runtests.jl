@@ -220,6 +220,19 @@ test_horizons = [1, 3, [1, 2, 5], 1:6]
         @test_throws ArgumentError ETSModel(error = "N")
     end
 
+    @testset "ETS estimates the parameters of damped trends" begin
+        Random.seed!(3)
+        n = 300
+        y = collect((100.0 .+ 0.4 .* (1:n)) .* (1 .+ 0.05 .* randn(n)))
+        model = ETSModel(error = "M", trend = "Ad")
+        start = ForecastBaselines.getInitial(y, model)
+        fitted = fit_baseline(y, model)
+        moved = [!(fitted.par.θ.α ≈ start.θ.α), !(fitted.par.θ.β ≈ start.θ.β),
+                 !(fitted.par.θ.ϕ ≈ start.θ.ϕ)]
+        @test any(moved)
+        @test 0 <= fitted.par.θ.ϕ <= 1
+    end
+
     @testset "Damped trends start from the fitted slope" begin
         Random.seed!(7)
         x = collect(300.0 .- 2.25 .* (1:60) .+ randn(60))
