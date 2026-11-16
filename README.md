@@ -563,7 +563,7 @@ To add a model, start from the template in [`contrib/ModelTemplate.jl`](contrib/
 
 Code is formatted with [Runic](https://github.com/fredrikekre/Runic.jl), and CI checks it on every pull request. Run `pre-commit install` once to format on each commit, or format by hand with `julia -m Runic --inplace src test` after installing Runic. To leave the formatting commit out of `git blame`, run `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
 
-Tests are [test items](https://github.com/julia-vscode/TestItemRunner.jl), one file per model under `test/models/` and one per topic elsewhere in `test/`, each tagged with the model or topic it covers. `Pkg.test()` runs them all. The Julia extension for VS Code lists and runs them one at a time, and from a REPL in the test environment `@run_package_tests filter = ti -> :arma in ti.tags` runs the ARMA tests alone.
+Tests are [test items](https://github.com/julia-vscode/TestItemRunner.jl), one file per model under `test/models/` and one per topic elsewhere in `test/`, each tagged with the model or topic it covers. `Pkg.test()` runs them all. The Julia extension for VS Code lists and runs them one at a time, and in a REPL started in the repository root with the test dependencies available, `using TestItemRunner; TestItemRunner.run_tests("."; filter = ti -> :arma in ti.tags)` runs the ARMA tests alone.
 
 ## Citation
 
