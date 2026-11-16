@@ -91,7 +91,8 @@ end
         intervals = [interval, ForecastInterval([9.0, 6.0], [13.0, 16.0], [0.5, 0.9])],
         truth = [13.0, 20.0]
     )
-    @test forecast_error(fc, IntervalWidth(); horizon = 2) == [4.0, 10.0]
+    # Both horizons' intervals have the same widths, so the score checks the horizon.
+    @test forecast_error(fc, IntervalScore(); horizon = 2) ≈ [4 + 2 / 0.5 * 7, 10 + 2 / 0.1 * 4]
     @test all_forecast_errors(fc, IntervalWidth()) == [[4.0, 10.0], [4.0, 10.0]]
     @test all_forecast_errors(fc, IntervalScore()) ≈ [[8.0, 10.0], [4 + 2 / 0.5 * 7, 10 + 2 / 0.1 * 4]]
 
