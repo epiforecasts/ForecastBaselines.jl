@@ -887,14 +887,17 @@ function fit_baseline(
     init = getInitial(x, model)
     initVec = ETSpar2θ(init, model)
     result = optimize(vars -> L_fun(x, model, vars), initVec)
-    # L_fun only returns 1e8 or more for infeasible parameters.
-    result.minimum < 1.0e8 || throw(
-        ArgumentError(
-            "The search from the starting values found no parameters that keep this " *
-                "ETS model's damped multiplicative trend positive; an undamped or " *
-                "additive trend may suit the series"
+    # For a damped multiplicative trend, L_fun only returns 1e8 or more for parameters
+    # that make the trend negative. A NaN objective is left to the caller as before.
+    if model.trend isa MdTrend && result.minimum >= 1.0e8
+        throw(
+            ArgumentError(
+                "The search from the starting values found no parameters that keep this " *
+                    "ETS model's damped multiplicative trend positive; an undamped or " *
+                    "additive trend may suit the series"
+            )
         )
-    )
+    end
     estVec = result.minimizer
     return ETSFitted(x, model, ETSθ2par(estVec, model), setting, temporal_info)
 end
