@@ -89,7 +89,7 @@ end
         model = ETSModel(error = error, trend = "Md", season = season, s = 12)
         @testset "$name,$error,Md,$season" begin
             fitted = fit_baseline(x, model)
-            @test fitted.par.z0.L > 0
+            season == "A" && @test fitted.par.z0.L > 0
             @test fitted.par.z0.B > 0
             @test all(isfinite, point_forecast(fitted, 1:3))
         end
@@ -105,5 +105,18 @@ end
     x = 50 .- 0.8 .* (1:n) .+ 2 .* randn(n)
     for trend in ("N", "A", "Ad", "M")
         @test fit_baseline(x, ETSModel(trend = trend, season = "A", s = 12)) isa ETSFitted
+    end
+end
+
+@testitem "Damped multiplicative trends without a season can keep a negative level" setup = [TestData] tags = [:models, :ets] begin
+    using Random
+    # A rising series of negative values: the trend stays positive while the level is
+    # negative, so the fit should follow the rise rather than flatten out.
+    Random.seed!(1)
+    x = -50 .+ 0.5 .* (1:60) .+ randn(60)
+    for error in ("A", "M")
+        fitted = fit_baseline(x, ETSModel(error = error, trend = "Md"))
+        @test fitted.par.z0.L < 0
+        @test all(>(0.2), diff(point_forecast(fitted, 1:4)))
     end
 end
