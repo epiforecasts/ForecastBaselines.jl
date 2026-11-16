@@ -1050,3 +1050,5 @@ test_horizons = [1, 3, [1, 2, 5], 1:6]
         @test has_intervals(efficient_forecast)
     end
 end
+
+include("quality.jl")

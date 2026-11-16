@@ -1,7 +1,15 @@
 module ForecastBaselines
 
-using LinearAlgebra, Random, Dates, Distributions, Printf
-using Polynomials, Optim, KernelDensity
+using Dates: Dates, Date, DatePeriod, DateTime, Time, TimePeriod, TimeType, Week
+using Distributions: Distributions, ContinuousUnivariateDistribution, Distribution,
+    NegativeBinomial, Normal, Poisson, TDist, Uniform, logpdf, mean, median, quantile,
+    std, truncated, var
+using KernelDensity: KernelDensity, kde
+using LinearAlgebra: LinearAlgebra
+using Optim: Optim, optimize
+using Polynomials: Polynomials
+using Printf: @sprintf
+using Random: Random
 using StatsBase: sample, wsample
 
 include("Types.jl")
