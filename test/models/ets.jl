@@ -108,3 +108,14 @@ end
         @test all(>(0.2), diff(point_forecast(fitted, 1:4)))
     end
 end
+
+@testitem "ETS starts additive seasonal effects that sum to zero" setup = [TestData] tags = [:models, :ets] begin
+    for x in (seasonal_data, seasonal_data .- 10)
+        S = ForecastBaselines.getInitial(x, ETSModel(season = "A", s = 12)).z0.S
+        @test sum(S) ≈ 0 atol = 1.0e-10
+        # The pattern keeps the amplitude of the data rather than being rescaled.
+        @test 1 < maximum(S) - minimum(S) < 8
+    end
+    S = ForecastBaselines.getInitial(seasonal_data, ETSModel(season = "M", s = 12)).z0.S
+    @test sum(S) / 12 ≈ 1
+end

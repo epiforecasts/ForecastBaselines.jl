@@ -735,11 +735,13 @@ function getInitial(x::Vector{T1}, model::ETSModel) where {T1 <: Real}
             if model.season isa ASeason
                 xx = x[tSeq] .- ff
                 sRaw = (ss -> mean(xx[ss:s:length(xx)])).(1:s)
-                sNorm = sRaw ./ sum(sRaw)
+                # Additive seasonal effects sum to zero.
+                sNorm = sRaw .- mean(sRaw)
             else
                 xx = x[tSeq] ./ ff
                 sRaw = (ss -> mean(xx[ss:s:length(xx)])).(1:s)
-                sNorm = sRaw ./ sum(sRaw) .* s
+                # Multiplicative seasonal factors average one.
+                sNorm = sRaw ./ mean(sRaw)
             end
         else
             xx = x
