@@ -219,11 +219,11 @@ function compute_error(target::Real, truth::Real, error::PinballError)
 end
 
 function compute_error(
-        target::Union{Missing, T1},
-        truth::Union{Missing, T2},
-        error::T3,
+        target::Union{Missing, Real},
+        truth::Union{Missing, Real},
+        error::AbstractPointError,
         missing_strategy::Symbol = :skip
-    ) where {T1 <: Real, T2 <: Real, T3 <: AbstractPointError}
+    )
     if !(missing_strategy in [:error, :skip, :propagate])
         missing_strategy = :skip
     end
@@ -262,11 +262,11 @@ Compute vector of point forecast errors with missing value handling.
 Vectorized error computation with flexible missing value handling.
 """
 function compute_error(
-        target::Union{Vector{Missing}, Vector{Union{Missing, T1}}, Vector{T1}},
-        truth::Union{Vector{Missing}, Vector{Union{Missing, T2}}, Vector{T2}},
-        error::T3,
+        target::AbstractVector,
+        truth::AbstractVector{<:Union{Missing, Real}},
+        error::AbstractPointError,
         missing_strategy::Symbol = :skip
-    ) where {T1, T2 <: Real, T3 <: AbstractPointError}
+    )
     length(target) == length(truth) || throw(ArgumentError("Target and truth must be the same length"))
     errors = [compute_error(target[i], truth[i], error, :propagate) for i in 1:length(truth)]
 
@@ -318,10 +318,10 @@ function forecast_error(
         fc::Forecast,
         error::T1;
         horizon::Int = fc.horizon[1],
-        truth::Union{Vector{T2}, T2, Nothing} = fc.truth,
+        truth::Union{AbstractVector{<:Real}, Real, Nothing} = fc.truth,
         target::Symbol = :mean,
         missing_strategy::Symbol = :skip
-    ) where {T1 <: AbstractPointError, T2 <: Real}
+    ) where {T1 <: AbstractPointError}
     # Check validity of horizons
     (horizon > 0) || throw(ArgumentError("Horizon must be positive"))
     (horizon in fc.horizon) || throw(ArgumentError("Selected horizon must be in forecast"))
@@ -388,10 +388,10 @@ Batch computation of forecast errors across all available horizons.
 function all_forecast_errors(
         fc::Forecast,
         error::T1;
-        truth::Union{Vector{T2}, T2, Nothing} = fc.truth,
+        truth::Union{AbstractVector{<:Real}, Real, Nothing} = fc.truth,
         target::Symbol = :mean,
         missing_strategy::Symbol = :skip
-    ) where {T1 <: AbstractPointError, T2 <: Real}
+    ) where {T1 <: AbstractPointError}
     if isnothing(truth)
         truth = fill(missing, length(fc.horizon))
     end
@@ -536,11 +536,11 @@ end
 
 function compute_error(
         target::Union{Missing, ForecastInterval},
-        truth::Union{Missing, T1},
-        error::T2,
+        truth::Union{Missing, Real},
+        error::AbstractIntervalError,
         missing_strategy::Symbol = :skip;
-        target_median::Union{Nothing, T3} = nothing
-    ) where {T1 <: Real, T2 <: AbstractIntervalError, T3 <: Real}
+        target_median::Union{Nothing, Real} = nothing
+    )
     if !(missing_strategy in [:error, :skip, :propagate])
         missing_strategy = :skip
     end
@@ -577,12 +577,12 @@ function compute_error(
 end
 
 function compute_error(
-        target::Union{Vector{ForecastInterval}, Vector{Union{Missing, ForecastInterval}}, Vector{Missing}},
-        truth::Union{Vector{Missing}, Vector{Union{Missing, T1}}, Vector{T1}},
-        error::T2,
+        target::AbstractVector{<:Union{Missing, ForecastInterval}},
+        truth::AbstractVector{<:Union{Missing, Real}},
+        error::AbstractIntervalError,
         missing_strategy::Symbol = :skip;
-        target_median::Union{Vector{T3}, Vector{Nothing}, Vector{Union{T3, Nothing}}, Nothing} = nothing
-    ) where {T1 <: Real, T2 <: AbstractIntervalError, T3 <: Real}
+        target_median::Union{Nothing, AbstractVector{<:Union{Nothing, Real}}} = nothing
+    )
     length(target) == length(truth) || throw(ArgumentError("Target and truth must be the same length"))
     if isnothing(target_median)
         target_median = fill(nothing, length(target))
@@ -625,9 +625,9 @@ function forecast_error(
         fc::Forecast,
         error::T1;
         horizon::Int = fc.horizon[1],
-        truth::Union{Vector{T2}, T2, Nothing} = fc.truth,
+        truth::Union{AbstractVector{<:Real}, Real, Nothing} = fc.truth,
         missing_strategy::Symbol = :skip
-    ) where {T1 <: AbstractIntervalError, T2 <: Real}
+    ) where {T1 <: AbstractIntervalError}
     # Check validity of horizons
     (horizon > 0) || throw(ArgumentError("Horizon must be positive"))
     (horizon in fc.horizon) || throw(ArgumentError("Selected horizon must be in forecast"))
@@ -661,9 +661,9 @@ end
 function all_forecast_errors(
         fc::Forecast,
         error::T1;
-        truth::Union{Vector{T2}, T2, Nothing} = fc.truth,
+        truth::Union{AbstractVector{<:Real}, Real, Nothing} = fc.truth,
         missing_strategy::Symbol = :skip
-    ) where {T1 <: AbstractIntervalError, T2 <: Real}
+    ) where {T1 <: AbstractIntervalError}
     if isnothing(truth)
         truth = fill(missing, length(fc.horizon))
     end
@@ -788,11 +788,11 @@ function compute_error(target::Vector{Float64}, truth::Real, error::CRPScore_tra
 end
 
 function compute_error(
-        target::Union{Missing, Vector{T1}},
-        truth::Union{Missing, T2},
-        error::T3,
+        target::Union{Missing, AbstractVector{<:Real}},
+        truth::Union{Missing, Real},
+        error::AbstractTrajectoryError,
         missing_strategy::Symbol = :skip
-    ) where {T1 <: Real, T2 <: Real, T3 <: AbstractTrajectoryError}
+    )
     if !(missing_strategy in [:error, :skip, :propagate])
         missing_strategy = :skip
     end
@@ -814,11 +814,11 @@ function compute_error(
 end
 
 function compute_error(
-        target::Union{Matrix{T1}, Matrix{Union{Missing, T1}}, Matrix{Missing}},
-        truth::Union{Vector{Missing}, Vector{Union{Missing, T2}}, Vector{T2}},
-        error::T3,
+        target::AbstractMatrix{<:Union{Missing, Real}},
+        truth::AbstractVector{<:Union{Missing, Real}},
+        error::AbstractTrajectoryError,
         missing_strategy::Symbol = :skip
-    ) where {T1 <: Real, T2 <: Real, T3 <: AbstractTrajectoryError}
+    )
     size(target)[2] == length(truth) || throw(ArgumentError("Number of columns in target must equal the length of truth"))
     errors = [compute_error(target[:, i], truth[i], error, :propagate) for i in 1:length(truth)]
 
@@ -848,9 +848,9 @@ function forecast_error(
         fc::Forecast,
         error::T1;
         horizon::Int = fc.horizon[1],
-        truth::Union{Vector{T2}, T2, Nothing} = fc.truth,
+        truth::Union{AbstractVector{<:Real}, Real, Nothing} = fc.truth,
         missing_strategy::Symbol = :skip
-    ) where {T1 <: AbstractTrajectoryError, T2 <: Real}
+    ) where {T1 <: AbstractTrajectoryError}
     # Check validity of horizons
     (horizon > 0) || throw(ArgumentError("Horizon must be positive"))
     (horizon in fc.horizon) || throw(ArgumentError("Selected horizon must be in forecast"))
@@ -884,9 +884,9 @@ end
 function all_forecast_errors(
         fc::Forecast,
         error::T1;
-        truth::Union{Vector{T2}, T2, Nothing} = fc.truth,
+        truth::Union{AbstractVector{<:Real}, Real, Nothing} = fc.truth,
         missing_strategy::Symbol = :skip
-    ) where {T1 <: AbstractTrajectoryError, T2 <: Real}
+    ) where {T1 <: AbstractTrajectoryError}
     if isnothing(truth)
         truth = fill(missing, length(fc.horizon))
     end
