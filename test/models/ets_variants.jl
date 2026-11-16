@@ -133,13 +133,7 @@ end
             width(i) = i.upper[2] - i.lower[2]
             @test width(fc.intervals[1]) > 0.5 * 2 * 1.645 * std(filtered.ϵ) * abs(r)
             # Uncertainty grows with the horizon.
-            if (error, trend, season) == ("M", "Md", "A")
-                # Nelder-Mead stops at its iteration limit on a poor fit here, with a
-                # horizon-1 interval far wider than the data.
-                @test_broken width(fc.intervals[6]) > width(fc.intervals[1])
-            else
-                @test width(fc.intervals[6]) > width(fc.intervals[1])
-            end
+            @test width(fc.intervals[6]) > width(fc.intervals[1])
         end
     end
 end
