@@ -86,6 +86,7 @@ end
     kept = filter_horizons(fc, [3, 1])
     @test kept.target_date == fc.target_date[[3, 1]]
     @test kept.reference_date == fc.reference_date
+    @test kept.resolution == fc.resolution
     @test kept.horizon == [3, 1]
     @test kept.mean == [30.0, 10.0]
     @test kept.median == [31.0, 11.0]
@@ -113,6 +114,8 @@ end
     combined = extend_forecast(early, late)
     @test combined.horizon == [1, 2, 3, 4]
     @test combined.target_date == [Date(2024, 1, 1) + Week(h) for h in 1:4]
+    @test combined.reference_date == Date(2024, 1, 1)
+    @test combined.resolution == Week(1)
     @test combined.mean == [10.0, 20.0, 30.0, 40.0]
     @test combined.truth == [13.0, 23.0, 33.0, 43.0]
     @test combined.intervals == [early.intervals[1], late.intervals[1], early.intervals[2], late.intervals[2]]
