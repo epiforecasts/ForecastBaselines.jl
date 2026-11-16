@@ -123,8 +123,11 @@ end
     @test combined.model_name == "a + b"
 
     @test_throws ArgumentError extend_forecast(early, example_forecast(horizon = [3], dated = true))
+    # Forecasts that differ only in resolution, so the resolution check is the only
+    # thing that can throw.
     @test_throws ArgumentError extend_forecast(
-        early, Forecast(horizon = [2], mean = [1.0], resolution = 2)
+        Forecast(horizon = [1, 3], mean = [10.0, 30.0]),
+        Forecast(horizon = [2], mean = [1.0], resolution = 2)
     )
 end
 
