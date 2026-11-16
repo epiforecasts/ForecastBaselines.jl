@@ -124,14 +124,15 @@ end
             @test all(isfinite, fc.mean)
             @test all(i -> all(i.lower .<= i.upper), fc.intervals)
             @test all(i -> i.lower[2] <= i.lower[1] && i.upper[1] <= i.upper[2], fc.intervals)
-            # One step ahead a trajectory is the point forecast plus r(z) times noise
-            # on the scale of the in-sample residuals, so the 90% interval is about
-            # 2 * 1.645 * sd(residuals) * |r(z)| wide. Half of that is a floor that
-            # simulation without noise cannot reach.
+            # One step ahead a trajectory is the point forecast plus noise on the scale
+            # of the in-sample residuals: additive residuals, or relative ones times
+            # the point forecast for multiplicative errors. The 90% interval is then
+            # about 2 * 1.645 times that wide, and half of it is a floor that
+            # simulation without noise, or with noise on the wrong scale, cannot reach.
             filtered = ForecastBaselines.ETSFilter(seasonal_data, model, fitted.par)
-            r = ForecastBaselines.r_function(filtered.z[end], model, fitted.par.θ)
+            scale = error == "M" ? abs(fc.mean[1]) : 1.0
             width(i) = i.upper[2] - i.lower[2]
-            @test width(fc.intervals[1]) > 0.5 * 2 * 1.645 * std(filtered.ϵ) * abs(r)
+            @test width(fc.intervals[1]) > 0.5 * 2 * 1.645 * std(filtered.ϵ) * scale
             # Uncertainty grows with the horizon.
             @test width(fc.intervals[6]) > width(fc.intervals[1])
         end
