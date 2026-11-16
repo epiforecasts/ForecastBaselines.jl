@@ -119,3 +119,11 @@ end
     S = ForecastBaselines.getInitial(seasonal_data, ETSModel(season = "M", s = 12)).z0.S
     @test sum(S) / 12 ≈ 1
 end
+
+@testitem "ETS starting seasonal states line up with the first observations" setup = [TestData] tags = [:models, :ets] begin
+    pattern = 2 .* sin.(2π .* (1:12) ./ 12) .+ [0.0, 0.5, 0, 0, -0.5, 0, 0, 0, 0.3, 0, 0, 0]
+    x = [10 + pattern[mod1(t, 12)] for t in 1:72]
+    S = ForecastBaselines.getInitial(x, ETSModel(season = "A", s = 12)).z0.S
+    # S[end] is used for observation 1, S[end - 1] for observation 2, ...
+    @test reverse(S) ≈ pattern .- sum(pattern) / 12
+end

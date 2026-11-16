@@ -747,6 +747,9 @@ function getInitial(x::Vector{T1}, model::ETSModel) where {T1 <: Real}
             xx = x
             sNorm = abs.(rand(Normal(), s)) ./ 10
         end
+        # The filter uses S[end] for the first observation, S[end - 1] for the second
+        # and so on, so the seasons go in back to front.
+        sNorm = reverse(sNorm)
     else
         xx = x
         sNorm = [0.0]
