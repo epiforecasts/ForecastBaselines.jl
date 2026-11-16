@@ -127,12 +127,13 @@ end
             # One step ahead a trajectory is the point forecast plus noise on the scale
             # of the in-sample residuals: additive residuals, or relative ones times
             # the point forecast for multiplicative errors. The 90% interval is then
-            # about 2 * 1.645 times that wide, and half of it is a floor that
-            # simulation without noise, or with noise on the wrong scale, cannot reach.
+            # about 2 * 1.645 times that wide. Between half and twice that excludes
+            # simulation without noise, or with noise on the wrong scale.
             filtered = ForecastBaselines.ETSFilter(seasonal_data, model, fitted.par)
             scale = error == "M" ? abs(fc.mean[1]) : 1.0
             width(i) = i.upper[2] - i.lower[2]
-            @test width(fc.intervals[1]) > 0.5 * 2 * 1.645 * std(filtered.ϵ) * scale
+            nominal = 2 * 1.645 * std(filtered.ϵ) * scale
+            @test 0.5 * nominal < width(fc.intervals[1]) < 2 * nominal
             # Uncertainty grows with the horizon.
             @test width(fc.intervals[6]) > width(fc.intervals[1])
         end
