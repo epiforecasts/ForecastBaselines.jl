@@ -14,7 +14,8 @@
                     for h in horizon
             ],
             truth = Float64.(10 .* horizon .+ 3),
-            trajectories = reshape(collect(1.0:(4n)), 4, n),
+            # Each horizon's samples differ, so a misplaced column shows up.
+            trajectories = reduce(hcat, [100.0 * h .+ (1:4) for h in horizon]),
             model_name = model_name
         )
     end
