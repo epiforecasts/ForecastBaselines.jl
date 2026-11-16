@@ -6,6 +6,7 @@ using Distributions: Distributions, ContinuousUnivariateDistribution, Distributi
     std, truncated, var
 using KernelDensity: KernelDensity, kde
 using LinearAlgebra: LinearAlgebra
+using Logging: Logging
 using Optim: Optim, optimize
 using Polynomials: Polynomials
 using Printf: @sprintf

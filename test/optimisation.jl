@@ -29,3 +29,22 @@ end
     @test_logs (:warn, r"without converging") fit_baseline(seasonal_data, model)
     @test_logs fit_baseline(seasonal_data, ETSModel())
 end
+
+@testitem "Refits behind empirical intervals do not warn" setup = [TestData] tags = [:optimisation] begin
+    using Logging, Random
+    # The fit itself converges, but some of the refits on shorter stretches of the
+    # series that empirical intervals use do not.
+    Random.seed!(1)
+    x = [10 + 5 * sin(2π * t / 12) + randn() for t in 1:60]
+    fitted = fit_baseline(x, ETSModel(error = "A", trend = "A"))
+    @test has_converged(fitted)
+    @test_logs min_level = Logging.Warn forecast(fitted; interval_method = EmpiricalInterval(), horizon = 1:4)
+end
+
+@testitem "Each model type warns about its own non-converged fits" setup = [TestData] tags = [:optimisation] begin
+    holt_winters = ETSModel(error = "A", trend = "A", season = "A", s = 12)
+    @test_logs (:warn, r"ETS fit .* without converging") (:warn, r"ARMA fit .* without converging") begin
+        fit_baseline(seasonal_data, holt_winters)
+        fit_baseline(stationary_data, ARMAModel(p = 3, q = 3))
+    end
+end
