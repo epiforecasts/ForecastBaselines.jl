@@ -153,3 +153,12 @@ end
         @test z0.B ≈ 1.05
     end
 end
+
+@testitem "ETS starts a short seasonal series from no seasonal pattern" setup = [TestData] tags = [:models, :ets] begin
+    x = seasonal_data[1:20]
+    @test ForecastBaselines.getInitial(x, ETSModel(season = "A", s = 12)).z0.S == zeros(12)
+    @test ForecastBaselines.getInitial(x, ETSModel(season = "M", s = 12)).z0.S == ones(12)
+    # Without random starting values, repeated fits agree.
+    fit() = point_forecast(fit_baseline(x, ETSModel(season = "A", s = 12)), 1:3)
+    @test isequal(fit(), fit())
+end

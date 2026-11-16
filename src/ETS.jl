@@ -744,8 +744,9 @@ function getInitial(x::Vector{T1}, model::ETSModel) where {T1 <: Real}
                 sNorm = sRaw ./ mean(sRaw)
             end
         else
+            # Too short to estimate a seasonal pattern: start from none.
             xx = x
-            sNorm = abs.(rand(Normal(), s)) ./ 10
+            sNorm = model.season isa ASeason ? zeros(s) : ones(s)
         end
         # The filter uses S[end] for the first observation, S[end - 1] for the second
         # and so on, so the seasons go in back to front.
