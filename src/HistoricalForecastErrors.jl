@@ -73,7 +73,11 @@ function historical_forecast_errors(
 
         newFit = nothing
         try
-            newFit = fit_baseline(xx, fitted.model, setting = fitted.estimation_setting)
+            # These refits are internal; whether each converged is not the user's
+            # concern, and its warning would be mistaken for one about their own fit.
+            newFit = Logging.with_logger(Logging.NullLogger()) do
+                fit_baseline(xx, fitted.model, setting = fitted.estimation_setting)
+            end
         catch e
             # @warn "Estimation failed at tEnd = $tEnd: $e"
             continue
