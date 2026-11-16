@@ -93,16 +93,21 @@ end
     end
 end
 
-@testitem "Damped multiplicative trends without a season can keep a negative level" setup = [TestData] tags = [:models, :ets] begin
+@testitem "Damped multiplicative trends can keep a negative level" setup = [TestData] tags = [:models, :ets] begin
     using Random
     # A rising series of negative values: the trend stays positive while the level is
     # negative, so the fit should follow the rise rather than flatten out.
     Random.seed!(1)
     x = -50 .+ 0.5 .* (1:60) .+ randn(60)
-    for error in ("A", "M")
-        fitted = fit_baseline(x, ETSModel(error = error, trend = "Md"))
-        @test fitted.par.z0.L < 0
-        @test all(>(0.2), diff(point_forecast(fitted, 1:4)))
+    for error in ("A", "M"), season in ("N", "A")
+        fitted = fit_baseline(x, ETSModel(error = error, trend = "Md", season = season, s = 12))
+        @testset "$error,Md,$season" begin
+            @test fitted.par.z0.L < 0
+            # The data rise by 0.5 a step, about 6 a year; a seasonal forecast moves
+            # within the year, so compare yearly averages.
+            fc = point_forecast(fitted, 1:24)
+            @test sum(fc[13:24]) / 12 - sum(fc[1:12]) / 12 > 2
+        end
     end
 end
 

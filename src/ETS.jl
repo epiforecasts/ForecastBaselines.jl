@@ -802,17 +802,6 @@ function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64}) where {T
         max(0, -par.θ.β) + max(0, par.θ.β - par.θ.α) +
         max(0, -par.θ.γ) + max(0, par.θ.γ - (1 - par.θ.α)) +
         max(0, -par.θ.ϕ) + max(0, par.θ.ϕ - 1)
-    # A damped multiplicative trend is raised to the power phi, so its state has to stay
-    # positive, and getInitial can start it below zero. With a seasonal component,
-    # getInitial can also start the level below zero, which then drives the trend
-    # negative. The penalty slopes back towards positive values.
-    damped_multiplicative = model.trend isa MdTrend
-    if damped_multiplicative
-        violation += max(0, -par.z0.B)
-        if !(model.season isa NSeason)
-            violation += max(0, -par.z0.L)
-        end
-    end
     if violation > 0
         return 1.0e8 * (1 + violation)
     end
@@ -826,7 +815,7 @@ function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64}) where {T
     end
     # The filter only raises the states before the last to the power phi, but
     # point_forecast starts from the last one.
-    if damped_multiplicative && filtered.z[end].B < 0
+    if model.trend isa MdTrend && filtered.z[end].B < 0
         return 1.0e8 * (1 - filtered.z[end].B)
     end
     ϵ = filtered.ϵ
