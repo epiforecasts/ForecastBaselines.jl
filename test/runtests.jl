@@ -170,6 +170,19 @@ test_horizons = [1, 3, [1, 2, 5], 1:6]
         @test length(fitted_seasonal.par.μ) == 3  # β₀ + sin + cos
     end
     
+    @testset "ARMA mean function fits a series far from zero" begin
+        s = 12
+        mu = (θ, t) -> θ[1] + θ[2] * sin(2π * t / s) + θ[3] * cos(2π * t / s) +
+                       θ[4] * sin(2 * 2π * t / s) + θ[5] * cos(2 * 2π * t / s)
+        t = 1:200
+        Random.seed!(11)
+        signal = 100 .+ 3 .* sin.(2π .* t ./ s) .+ 1.5 .* cos.(2 .* 2π .* t ./ s)
+        y = collect(signal .+ 0.5 .* randn(200))
+        fitted = fit_baseline(y, ARMAModel(1, 0, mu, 5))
+        fitted_mean = [mu(fitted.par.μ, tt) for tt in t]
+        @test sqrt(mean((fitted_mean .- signal) .^ 2)) < 1
+    end
+
     @testset "ETS Model Tests" begin
         # Test simple ETS(A,N,N)
         model = ETSModel(error="A", trend="N", season="N")
@@ -201,6 +214,12 @@ test_horizons = [1, 3, [1, 2, 5], 1:6]
         @test fitted_seasonal.model.season.s == 12
     end
     
+    @testset "ETSModel error argument selects the error type" begin
+        @test ETSModel(error = "A").error isa AError
+        @test ETSModel(error = "M").error isa MError
+        @test_throws ArgumentError ETSModel(error = "N")
+    end
+
     @testset "Damped trends start from the fitted slope" begin
         Random.seed!(7)
         x = collect(300.0 .- 2.25 .* (1:60) .+ randn(60))
@@ -230,6 +249,23 @@ test_horizons = [1, 3, [1, 2, 5], 1:6]
         @test size(fc_traj) == (50, 2)
     end
     
+    @testset "STL minimum length is ns * s + 1" begin
+        Random.seed!(1)
+        x = 10 .+ sin.(2π .* (1:200) ./ 12) .+ 0.1 .* randn(200)
+        for ns in (7, 13)
+            setting = STLEstimationSetting(s = 12, ns = ns)
+            n = ns * 12 + 1
+            @test fit_baseline(x[1:n], STLModel(s = 12); setting = setting) isa STLFitted
+            err = try
+                fit_baseline(x[1:(n - 1)], STLModel(s = 12); setting = setting)
+            catch e
+                e
+            end
+            @test err isa ArgumentError
+            @test occursin(string(n), err.msg)
+        end
+    end
+
     @testset "INARCH Model Tests" begin
         # Test INARCH(1) without seasonality
         model = INARCHModel(p=1, s=0, nb=false)
@@ -261,6 +297,21 @@ test_horizons = [1, 3, [1, 2, 5], 1:6]
         @test length(fitted_seasonal.par.γ) == 2  # sin + cos coefficients
     end
     
+    @testset "INARCH forecasts evaluate each harmonic at its own frequency" begin
+        # Without autoregression the forecast is the intercept times the
+        # seasonal factor, which repeats every s/2 steps under the second
+        # harmonic alone.
+        model = INARCHModel(p = 1, s = 12, k = 2)
+        par = INARCHParameter(5.0, [0.0], 0.0, [0.0, 0.0, 0.0, 0.7])
+        fitted = INARCHFitted(fill(5, 48), model, par,
+                              INARCHEstimationSetting(), TemporalInfo())
+        expected = 5 .* exp.(0.7 .* cos.(2 .* 2π .* (49:60) ./ 12))
+        @test point_forecast(fitted, 1:12) ≈ expected
+        fc_point, _, _, _ = interval_forecast(
+            fitted, ModelTrajectoryInterval(n_trajectories = 10), 1:12, [0.8])
+        @test fc_point ≈ expected
+    end
+
     @testset "KDE Model Tests" begin
         model = KDEModel()
         fitted = fit_baseline(stationary_data, model)
