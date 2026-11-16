@@ -109,13 +109,15 @@ end
 
 @testitem "Trajectory errors" tags = [:scoring] begin
     trajectories = [1.0 2.0; 2.0 3.0; 3.0 4.0; 4.0 5.0]
-    fc = Forecast(horizon = [1, 2], mean = [2.5, 3.5], trajectories = trajectories, truth = [2.5, 3.5])
+    # LogLoss is minus the log of the share of samples equal to the truth, plus an offset
+    # (0.01 by default). The columns hold 1 to 4 and 2 to 5, so 2.0 is one of four samples
+    # in each, 3.0 one of four in the first and 9.0 none of the second.
+    fc = Forecast(horizon = [1, 2], mean = [2.5, 3.5], trajectories = trajectories, truth = [2.0, 2.0])
+    @test all_forecast_errors(fc, LogLoss()) ≈ [-log(1 / 4 + 0.01), -log(1 / 4 + 0.01)]
 
-    errors = all_forecast_errors(fc, LogLoss())
-    @test length(errors) == 2
-    @test all(isfinite, errors)
-    # The truth sits at the centre of both samples, so both get the same log loss.
-    @test errors[1] ≈ errors[2]
+    fc = Forecast(horizon = [1, 2], mean = [2.5, 3.5], trajectories = trajectories, truth = [3.0, 9.0])
+    @test all_forecast_errors(fc, LogLoss()) ≈ [-log(1 / 4 + 0.01), -log(0 + 0.01)]
+    @test all_forecast_errors(fc, LogLoss(offset = 0.1)) ≈ [-log(1 / 4 + 0.1), -log(0 + 0.1)]
 
     no_truth = Forecast(horizon = fc.horizon, mean = fc.mean, trajectories = trajectories)
     @test isempty(all_forecast_errors(no_truth, LogLoss()))
