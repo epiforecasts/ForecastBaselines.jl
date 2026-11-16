@@ -236,7 +236,7 @@ function interval_forecast(fitted::OLSFitted,
     end
 
     σ = sqrt(sum((y .- X*β).^2)/(p - d - 1))
-    tqVec = quantile(TDist(p - d - 1), alpha)
+    tqVec = quantile.(TDist(p - d - 1), alpha)
     XXinv = inv(X'X)
 
     all_quantiles = fill(Float64[], length(horizon))
