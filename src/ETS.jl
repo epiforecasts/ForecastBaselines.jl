@@ -729,36 +729,60 @@ function getInitial(x::Vector{T1}, model::ETSModel) where {T1 <: Real}
     T = length(x)
     if !(model.season isa NSeason)
         s = model.season.s
-        if length(x) > 2 * s
+        # The moving average over two seasons leaves T - 2s + 1 deviations, and each
+        # season needs at least one of them.
+        if length(x) - 2 * s + 1 >= s
             ff = (t -> mean(x[t:(t + 2 * s - 1)])).(1:(T - 2 * s + 1))
             tSeq = (1:(T - 2 * s + 1)) .+ s
             if model.season isa ASeason
                 xx = x[tSeq] .- ff
                 sRaw = (ss -> mean(xx[ss:s:length(xx)])).(1:s)
-                sNorm = sRaw ./ sum(sRaw)
+                # Additive seasonal effects sum to zero.
+                sNorm = sRaw .- mean(sRaw)
             else
                 xx = x[tSeq] ./ ff
                 sRaw = (ss -> mean(xx[ss:s:length(xx)])).(1:s)
-                sNorm = sRaw ./ sum(sRaw) .* s
+                # Multiplicative seasonal factors average one.
+                sNorm = sRaw ./ mean(sRaw)
             end
         else
+            # Too short to estimate a seasonal pattern: start from none.
             xx = x
-            sNorm = abs.(rand(Normal(), s)) ./ 10
+            sNorm = model.season isa ASeason ? zeros(s) : ones(s)
         end
+        # The filter uses S[end] for the first observation, S[end - 1] for the second
+        # and so on, so the seasons go in back to front.
+        sNorm = reverse(sNorm)
     else
         xx = x
         sNorm = [0.0]
     end
 
-    nxx = minimum([10, length(xx)])
-    yy = xx[1:nxx]
+    # The level and trend describe the series with the season taken out, not the
+    # deviations from the moving average that the seasonal states come from.
+    if model.season isa NSeason
+        adjusted = x
+    else
+        season_of_t = reverse(sNorm)[mod1.(1:T, model.season.s)]
+        adjusted = model.season isa ASeason ? x .- season_of_t : x ./ season_of_t
+    end
+    nxx = minimum([10, length(adjusted)])
+    yy = adjusted[1:nxx]
     X = [ones(nxx) collect(1:nxx)]
     beta = inv(X'X) * X'yy
     l = beta[1]
     if model.trend isa ATrend || model.trend isa AdTrend
         b = beta[2]
     elseif model.trend isa MTrend || model.trend isa MdTrend
-        b = 1 + beta[2] / beta[1]
+        if all(yy .> 0)
+            # A growth factor is positive, so fit the line on the log scale; the
+            # level and factor then start positive.
+            log_beta = inv(X'X) * X' * log.(yy)
+            l = exp(log_beta[1])
+            b = exp(log_beta[2])
+        else
+            b = 1.0
+        end
     else
         b = 0.0
     end
@@ -782,7 +806,18 @@ function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64}) where {T
         return 1.0e8 * (1 + violation)
     end
 
-    filtered = ETSFilter(x, model, par)
+    filtered = try
+        ETSFilter(x, model, par)
+    catch err
+        err isa DomainError || rethrow()
+        # The trend state turned negative partway through the series.
+        return 1.0e8
+    end
+    # The filter only raises the states before the last to the power phi, but
+    # point_forecast starts from the last one.
+    if model.trend isa MdTrend && filtered.z[end].B < 0
+        return 1.0e8 * (1 - filtered.z[end].B)
+    end
     ϵ = filtered.ϵ
     rr = [r_function(filtered.z0, model, par.θ); (zz -> r_function(zz, model, par.θ)).(filtered.z[1:(end - 1)])]
     return length(x) * log(sum(ϵ .^ 2)) + 2 * sum(log.(abs.(rr)))
@@ -809,17 +844,19 @@ struct ETSFitted <: AbstractFittedModel
     par::ETSParameter
     estimation_setting::ETSEstimationSetting
     temporal_info::TemporalInfo
+    optimisation::Union{OptimisationInfo, Nothing}
     function ETSFitted(
             x,
             model::ETSModel,
             par::ETSParameter,
             estimation_setting::ETSEstimationSetting,
-            temporal_info::TemporalInfo = TemporalInfo()
+            temporal_info::TemporalInfo = TemporalInfo(),
+            optimisation::Union{OptimisationInfo, Nothing} = nothing
         )
         if !(x isa Vector{Float64})
             x = Float64.(x)
         end
-        return new(x, model, par, estimation_setting, temporal_info)
+        return new(x, model, par, estimation_setting, temporal_info, optimisation)
     end
 end
 
@@ -868,9 +905,14 @@ function fit_baseline(
     end
     init = getInitial(x, model)
     initVec = ETSpar2θ(init, model)
-    estVec = optimize(vars -> L_fun(x, model, vars), initVec).minimizer
-    return ETSFitted(x, model, ETSθ2par(estVec, model), setting, temporal_info)
+    result = optimize(vars -> L_fun(x, model, vars), initVec)
+    estVec = result.minimizer
+    return ETSFitted(
+        x, model, ETSθ2par(estVec, model), setting, temporal_info, optimisation_info(result, "ETS")
+    )
 end
+
+has_converged(fitted::ETSFitted) = isnothing(fitted.optimisation) ? nothing : fitted.optimisation.converged
 
 """
     point_forecast(fitted::ETSFitted, horizon::Union{Vector{Int}, Int, UnitRange{Int}}) -> Vector{Float64}

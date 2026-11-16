@@ -111,18 +111,20 @@ struct INARCHFitted <: AbstractFittedModel
     par::INARCHParameter
     estimation_setting::INARCHEstimationSetting
     temporal_info::TemporalInfo
+    optimisation::Union{OptimisationInfo, Nothing}
     function INARCHFitted(
             x,
             model::INARCHModel,
             par::INARCHParameter,
             estimation_setting::INARCHEstimationSetting,
-            temporal_info::TemporalInfo = TemporalInfo()
+            temporal_info::TemporalInfo = TemporalInfo(),
+            optimisation::Union{OptimisationInfo, Nothing} = nothing
         )
         #
         if !(x isa Vector{Int})
             x = Int.(x)
         end
-        return new(x, model, par, estimation_setting, temporal_info)
+        return new(x, model, par, estimation_setting, temporal_info, optimisation)
     end
 end
 
@@ -217,7 +219,7 @@ function fit_baseline(
     optRaw = optimize(vars -> inarchTF(vars, x, model), inits)
     par = inarchTF(optRaw.minimizer, x, model, true)
 
-    return INARCHFitted(x, model, par, setting, temporal_info)
+    return INARCHFitted(x, model, par, setting, temporal_info, optimisation_info(optRaw, "INARCH"))
 end
 
 function fit_baseline(
@@ -240,6 +242,8 @@ function fit_baseline(
 
     return INARCHFitted(x, model, par, setting, temporal_info)
 end
+
+has_converged(fitted::INARCHFitted) = isnothing(fitted.optimisation) ? nothing : fitted.optimisation.converged
 
 """
     point_forecast(fitted::INARCHFitted, horizon::Union{Vector{Int}, Int, UnitRange{Int}}) -> Vector{Float64}

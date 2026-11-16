@@ -320,6 +320,8 @@ struct TransformedFitted <: AbstractFittedModel
     end
 end
 
+has_converged(fitted::TransformedFitted) = has_converged(fitted.fitted_baseline)
+
 """
     transform(model::AbstractBaselineModel; 
               transformation::Union{AbstractDataTransformation, Nothing} = nothing,
