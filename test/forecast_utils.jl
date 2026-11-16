@@ -1,11 +1,13 @@
 @testmodule ForecastFixtures begin
-    using ForecastBaselines
+    using ForecastBaselines, Dates
 
-    export example_forecast
+    export example_forecast, unchanged_except
 
-    function example_forecast(; horizon = [1, 2, 3], model_name = "Example")
+    # With `dated = true` the forecast also carries a reference date, weekly target
+    # dates and a resolution, so that every field of a Forecast is set.
+    function example_forecast(; horizon = [1, 2, 3], model_name = "Example", dated = false)
         n = length(horizon)
-        return Forecast(
+        fc = Forecast(
             horizon = horizon,
             mean = Float64.(10 .* horizon),
             median = Float64.(10 .* horizon .+ 1),
@@ -18,41 +20,51 @@
             trajectories = reduce(hcat, [100.0 * h .+ (1:4) for h in horizon]),
             model_name = model_name
         )
+        return dated ? add_temporal_info(fc, Date(2024, 1, 1); resolution = Week(1)) : fc
+    end
+
+    # Whether every field of `b` other than `field` is the one in `a`.
+    function unchanged_except(a, b, field)
+        return all(f -> f == field || isequal(getfield(a, f), getfield(b, f)), fieldnames(Forecast))
     end
 end
 
 @testitem "add_* functions set one field and keep the others" setup = [ForecastFixtures] tags = [:forecast] begin
-    fc = Forecast(horizon = [1, 2], mean = [1.0, 2.0], model_name = "m")
+    # Every field is set, so dropping or changing any other field shows up.
+    fc = example_forecast(dated = true)
 
-    with_truth = add_truth(fc, [3, 4])
-    @test with_truth.truth == [3.0, 4.0]
-    @test with_truth.mean == fc.mean
-    @test with_truth.model_name == "m"
-    @test_throws ArgumentError add_truth(fc, [1.0, 2.0, 3.0])
+    with_truth = add_truth(fc, [3, 4, 5])
+    @test with_truth.truth == [3.0, 4.0, 5.0]
+    @test unchanged_except(fc, with_truth, :truth)
+    @test_throws ArgumentError add_truth(fc, [1.0, 2.0])
     @test add_truth(Forecast(horizon = [1], mean = [1.0]), 5).truth == [5.0]
 
-    with_median = add_median(fc, [1.5, 2.5])
-    @test with_median.median == [1.5, 2.5]
-    @test with_median.mean == fc.mean
+    with_median = add_median(fc, [1.5, 2.5, 3.5])
+    @test with_median.median == [1.5, 2.5, 3.5]
+    @test unchanged_except(fc, with_median, :median)
     @test_throws ArgumentError add_median(fc, [1.0])
 
-    intervals = [ForecastInterval([0.0], [2.0], [0.9]), ForecastInterval([1.0], [3.0], [0.9])]
+    intervals = [ForecastInterval([0.0], [2.0], [0.9]) for _ in 1:3]
     with_intervals = add_intervals(fc, intervals)
     @test with_intervals.intervals == intervals
+    @test unchanged_except(fc, with_intervals, :intervals)
     @test_throws ArgumentError add_intervals(fc, intervals[1:1])
 
-    with_trajectories = add_trajectories(fc, [1.0 2.0; 3.0 4.0; 5.0 6.0])
-    @test num_trajectories(with_trajectories) == 3
-    @test_throws ArgumentError add_trajectories(fc, ones(3, 3))
+    with_trajectories = add_trajectories(fc, [1.0 2.0 3.0; 4.0 5.0 6.0])
+    @test num_trajectories(with_trajectories) == 2
+    @test unchanged_except(fc, with_trajectories, :trajectories)
+    @test_throws ArgumentError add_trajectories(fc, ones(3, 2))
     single = add_trajectories(Forecast(horizon = [1], mean = [1.0]), [1.0, 2.0, 3.0])
     @test size(single.trajectories) == (3, 1)
 
-    removed = remove_trajectories(with_trajectories)
+    removed = remove_trajectories(fc)
     @test !has_trajectories(removed)
     @test num_trajectories(removed) == 0
-    @test removed.mean == fc.mean
+    @test unchanged_except(fc, removed, :trajectories)
 
-    @test update_model_name(fc, "renamed").model_name == "renamed"
+    renamed = update_model_name(fc, "renamed")
+    @test renamed.model_name == "renamed"
+    @test unchanged_except(fc, renamed, :model_name)
 end
 
 @testitem "Horizon accessors" setup = [ForecastFixtures] tags = [:forecast] begin
