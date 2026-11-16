@@ -36,9 +36,9 @@ struct EmpiricalInterval <: AbstractIntervalMethod
     symmetry_correction::Bool
     stepwise::Bool
     return_trajectories::Bool
-    function EmpiricalInterval(;n_trajectories = 1000, min_observation = 1, bootstrap_distribution = nothing, seed = nothing, positivity_correction = :none, symmetry_correction = false, stepwise = false, return_trajectories = false)
+    function EmpiricalInterval(; n_trajectories = 1000, min_observation = 1, bootstrap_distribution = nothing, seed = nothing, positivity_correction = :none, symmetry_correction = false, stepwise = false, return_trajectories = false)
         n_trajectories > 0 || throw(ArgumentError("Number of trajectories must be positive"))
-        new(n_trajectories, min_observation, bootstrap_distribution, seed, positivity_correction, symmetry_correction, stepwise, return_trajectories)
+        return new(n_trajectories, min_observation, bootstrap_distribution, seed, positivity_correction, symmetry_correction, stepwise, return_trajectories)
     end
 end
 # Below two methods are model specific
@@ -56,12 +56,12 @@ The fitted model is used to compute prediction intervals directly.
 """
 struct ParametricInterval <: AbstractIntervalMethod
     positivity_correction::Symbol
-    function ParametricInterval(;positivity_correction = :none)
+    function ParametricInterval(; positivity_correction = :none)
         if !(positivity_correction in [:none, :post_clip])
             @warn "positivity correction invalid, set to `:none`"
             positivity_correction = :none
         end
-        new(positivity_correction)
+        return new(positivity_correction)
     end
 end
 
@@ -86,8 +86,8 @@ struct ModelTrajectoryInterval <: AbstractIntervalMethod
     seed::Union{Int, Nothing}
     positivity_correction::Symbol
     return_trajectories::Bool
-    function ModelTrajectoryInterval(;n_trajectories = 1000, seed = nothing, positivity_correction = :none, return_trajectories = false)
+    function ModelTrajectoryInterval(; n_trajectories = 1000, seed = nothing, positivity_correction = :none, return_trajectories = false)
         n_trajectories > 0 || throw(ArgumentError("Number of trajectories must be positive"))
-        new(n_trajectories, seed, positivity_correction, return_trajectories)
+        return new(n_trajectories, seed, positivity_correction, return_trajectories)
     end
 end

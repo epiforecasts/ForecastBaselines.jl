@@ -55,14 +55,14 @@ struct ARMAModel <: AbstractBaselineModel
     function ARMAModel(p::Int, q::Int, μ::T1, μDim::Int) where {T1 <: Function}
         ((p >= 0) && (q >= 0)) || throw(ArgumentError("Model orders must be non-negative"))
         (μDim >= 0) || throw(ArgumentError("Number of trend parameters must be non-negative"))
-        new(p, q, μ, μDim)
+        return new(p, q, μ, μDim)
     end
 end
 
-function ARMAModel(;p::Int, q::Int, s::Int = 0, trend::Bool = false)
+function ARMAModel(; p::Int, q::Int, s::Int = 0, trend::Bool = false)
     if s == 0
         if trend
-            μ = (θ, t) -> θ[1] + θ[2]*t
+            μ = (θ, t) -> θ[1] + θ[2] * t
             μDim = 2
         else
             μ = (θ, t) -> θ[1]
@@ -70,10 +70,10 @@ function ARMAModel(;p::Int, q::Int, s::Int = 0, trend::Bool = false)
         end
     else
         if trend
-            μ = (θ, t) -> θ[1] + θ[2] * sin(t/s*2*π) + θ[3] * cos(t/s*2*π) + θ[4] * t
+            μ = (θ, t) -> θ[1] + θ[2] * sin(t / s * 2 * π) + θ[3] * cos(t / s * 2 * π) + θ[4] * t
             μDim = 4
         else
-            μ = (θ, t) -> θ[1] + θ[2] * sin(t/s*2*π) + θ[3] * cos(t/s*2*π)
+            μ = (θ, t) -> θ[1] + θ[2] * sin(t / s * 2 * π) + θ[3] * cos(t / s * 2 * π)
             μDim = 3
         end
     end
@@ -98,7 +98,7 @@ struct ARMAParameter <: AbstractModelParameters
     σ²::Float64
     function ARMAParameter(α, β, μ, σ²)
         (σ² >= 0) || throw(ArgumentError("Variance cannot be negative"))
-        new(Float64.(α), Float64.(β), Float64.(μ), Float64(σ²))
+        return new(Float64.(α), Float64.(β), Float64.(μ), Float64(σ²))
     end
 end
 
@@ -122,8 +122,8 @@ When `ensure_stability = false`:
 """
 struct ARMAEstimationSetting <: AbstractEstimationSetting
     ensure_stability::Bool
-    function ARMAEstimationSetting(;ensure_stability::Bool = true)
-        new(ensure_stability)
+    function ARMAEstimationSetting(; ensure_stability::Bool = true)
+        return new(ensure_stability)
     end
 end
 
@@ -147,13 +147,15 @@ struct ARMAFitted <: AbstractFittedModel
     par::ARMAParameter
     estimation_setting::ARMAEstimationSetting
     temporal_info::TemporalInfo
-    function ARMAFitted(x, model::ARMAModel, par::ARMAParameter,
+    function ARMAFitted(
+            x, model::ARMAModel, par::ARMAParameter,
             estimation_setting::ARMAEstimationSetting,
-            temporal_info::TemporalInfo = TemporalInfo())
+            temporal_info::TemporalInfo = TemporalInfo()
+        )
         if !(x isa Vector{Float64})
             x = Float64.(x)
         end
-        new(x, model, par, estimation_setting, temporal_info)
+        return new(x, model, par, estimation_setting, temporal_info)
     end
 end
 
@@ -177,24 +179,26 @@ Convert ARMA(p,q) representation to MA(∞) representation.
 ψ = ARMAtoMA(α, β, 10)  # First 10 MA coefficients
 ```
 """
-function ARMAtoMA(α::Vector{Float64},
-                  β::Vector{Float64},
-                  iMax::Int = 100)
+function ARMAtoMA(
+        α::Vector{Float64},
+        β::Vector{Float64},
+        iMax::Int = 100
+    )
     ψ = zeros(iMax)
     p = length(α)
     q = length(β)
-    M = maximum([p, q+1])
+    M = maximum([p, q + 1])
     # Make α and β the same length
     a = [α; zeros(M - p)]
     b = [β; zeros(M - q)]
-    for j = 1:M-1
-        ψ[j] = b[j] + sum(a[1:j-1] .* ψ[j-1:-1:1]) + a[j]
+    for j in 1:(M - 1)
+        ψ[j] = b[j] + sum(a[1:(j - 1)] .* ψ[(j - 1):-1:1]) + a[j]
     end
-    for j = M:iMax
+    for j in M:iMax
         if j == p
-            ψ[j] =  sum(a[1:p-1] .* ψ[j-1:-1:1]) + a[p]
+            ψ[j] = sum(a[1:(p - 1)] .* ψ[(j - 1):-1:1]) + a[p]
         else
-            ψ[j] = sum(a[1:p] .* ψ[j-1:-1:j-p])
+            ψ[j] = sum(a[1:p] .* ψ[(j - 1):-1:(j - p)])
         end
     end
     return ψ
@@ -203,11 +207,11 @@ end
 function ARMAθ2par(θ::Vector{Float64}, model::ARMAModel)
     p = model.p
     q = model.q
-    ARMAParameter(θ[1:p], θ[p+1:p+q], θ[p+q+1:end-1], θ[end])
+    return ARMAParameter(θ[1:p], θ[(p + 1):(p + q)], θ[(p + q + 1):(end - 1)], θ[end])
 end
 
 function ARMApar2θ(par::ARMAParameter, model::ARMAModel)
-    [par.α; par.β; par.μ; par.σ²]
+    return [par.α; par.β; par.μ; par.σ²]
 end
 
 """
@@ -226,7 +230,7 @@ lie outside the unit circle.
 - `Bool`: true if stationary, false otherwise
 ```
 """
-function is_stationary(α::Vector{Float64}; tolerance::Float64 = 1e-10)
+function is_stationary(α::Vector{Float64}; tolerance::Float64 = 1.0e-10)
     p = length(α)
     p == 0 && return true
     if p == 1
@@ -261,7 +265,7 @@ is_invertible(β₁)    # true
 is_invertible(β₂)    # false
 ```
 """
-function is_invertible(β::Vector{Float64}; tolerance::Float64 = 1e-10)
+function is_invertible(β::Vector{Float64}; tolerance::Float64 = 1.0e-10)
     q = length(β)
     q == 0 && return true
     if q == 1
@@ -269,16 +273,18 @@ function is_invertible(β::Vector{Float64}; tolerance::Float64 = 1e-10)
     end
     coeffs = [1.0; β]
     roots = Polynomials.roots(Polynomials.Polynomial(coeffs))
-    
+
     return all(abs.(roots) .> 1 + tolerance)
 end
 
-function check_stability(α::Vector{Float64}, β::Vector{Float64}; 
-                              tolerance::Float64 = 1e-10)
-    
-    stationary = is_stationary(α; tolerance=tolerance)
-    invertible = is_invertible(β; tolerance=tolerance)
-    stationary && invertible
+function check_stability(
+        α::Vector{Float64}, β::Vector{Float64};
+        tolerance::Float64 = 1.0e-10
+    )
+
+    stationary = is_stationary(α; tolerance = tolerance)
+    invertible = is_invertible(β; tolerance = tolerance)
+    return stationary && invertible
 end
 
 """
@@ -315,10 +321,12 @@ When `setting.ensure_stability = true`:
 - Uses conditional likelihood (assumes initial values are known)
 - For short series, may be sensitive to starting values
 """
-function fit_baseline(x::Vector{T1},
-             model::ARMAModel;
-             setting::Union{ARMAEstimationSetting, Nothing} = ARMAEstimationSetting(),
-             temporal_info::TemporalInfo = TemporalInfo()) where {T1 <: Real}
+function fit_baseline(
+        x::Vector{T1},
+        model::ARMAModel;
+        setting::Union{ARMAEstimationSetting, Nothing} = ARMAEstimationSetting(),
+        temporal_info::TemporalInfo = TemporalInfo()
+    ) where {T1 <: Real}
     #
     if isnothing(setting)
         setting = ARMAEstimationSetting()
@@ -330,7 +338,7 @@ function fit_baseline(x::Vector{T1},
             return Inf
         end
 
-        par = ARMAθ2par(θ, model)        
+        par = ARMAθ2par(θ, model)
         if ensure_stability
             if !check_stability(par.α, par.β)
                 return Inf
@@ -344,40 +352,42 @@ function fit_baseline(x::Vector{T1},
 
         m = (t -> model.μ(par.μ, t)).(1:T)
         y = x .- m
-        
+
         yHat = zeros(T)
         yHat[1:M] = zeros(M)
 
-        @inbounds for t = M+1:T
+        @inbounds for t in (M + 1):T
             # yHat[t] = sum(par.α .* y[t-1:-1:t-p]) .+ sum(par.β .* (y[t-1:-1:t-q] .- yHat[t-1:-1:t-q]))
             ar_sum = 0.0
-            for i = 1:p
-                ar_sum += par.α[i] * y[t-i]
+            for i in 1:p
+                ar_sum += par.α[i] * y[t - i]
             end
-            
+
             # Efficient MA component
             ma_sum = 0.0
-            for j = 1:q
-                ma_sum += par.β[j] * (y[t-j] - yHat[t-j])
+            for j in 1:q
+                ma_sum += par.β[j] * (y[t - j] - yHat[t - j])
             end
-            
+
             yHat[t] = ar_sum + ma_sum
         end
         d = Normal.(yHat, sqrt(par.σ²))
-        -sum(logpdf.(d, y))
+        return -sum(logpdf.(d, y))
     end
 
     # Under every convenience constructor the first mean-function coordinate is
     # the intercept. Nelder-Mead takes small steps from its starting point and
     # does not reach an intercept far from zero, so the intercept starts at the
     # mean of the data and the remaining coordinates at zero.
-    inits = [zeros(model.p + model.q);
-             model.μDim > 0 ? [mean(x); zeros(model.μDim - 1)] : zeros(0);
-             var(x)]
+    inits = [
+        zeros(model.p + model.q);
+        model.μDim > 0 ? [mean(x); zeros(model.μDim - 1)] : zeros(0);
+        var(x)
+    ]
     est = optimize(vars -> tf(vars, x, model, setting.ensure_stability), inits).minimizer
     estPar = ARMAθ2par(est, model)
 
-    ARMAFitted(x, model, estPar, setting, temporal_info)
+    return ARMAFitted(x, model, estPar, setting, temporal_info)
 end
 
 """
@@ -401,8 +411,10 @@ where:
 - Past forecasts used for h > i
 - Forecast errors ϵ̂_t available for h ≤ j, zero for h > j
 """
-function point_forecast(fitted::ARMAFitted,
-        horizon::Union{Vector{Int}, Int, UnitRange{Int}})
+function point_forecast(
+        fitted::ARMAFitted,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}}
+    )
     #
     if horizon isa Int
         horizon = collect(1:horizon)
@@ -420,26 +432,26 @@ function point_forecast(fitted::ARMAFitted,
     p = length(α)
     q = length(β)
     M = maximum([p, q])
-    
+
     μ = fitted.model.μ
     σ² = fitted.par.σ²
 
     T = length(fitted.x)
     h = maximum(horizon)
-    tSeq = 1:T+h
+    tSeq = 1:(T + h)
 
     m = (t -> μ(fitted.par.μ, t)).(tSeq)
-    y = [fitted.x .- m[1:T]; zeros(h)]    
+    y = [fitted.x .- m[1:T]; zeros(h)]
     yHat = zeros(T + h)
 
-    for t = M+1:T+h
-        yHat[t] = sum(α .* y[t-1:-1:t-p]) .+ sum(β .* (y[t-1:-1:t-q] .- yHat[t-1:-1:t-q]))
+    for t in (M + 1):(T + h)
+        yHat[t] = sum(α .* y[(t - 1):-1:(t - p)]) .+ sum(β .* (y[(t - 1):-1:(t - q)] .- yHat[(t - 1):-1:(t - q)]))
         if t > T
             y[t] = yHat[t]
         end
     end
 
-    yHat[T .+ horizon] .+ m[T .+ horizon]
+    return yHat[T .+ horizon] .+ m[T .+ horizon]
 end
 
 # Parametric forecast intervals using analytical ARMA prediction variance
@@ -483,12 +495,14 @@ where z_{α/2} is the standard normal quantile.
 When `method.positivity_correction = :post_clip`:
 - Negative interval bounds are set to zero after computation
 """
-function interval_forecast(fitted::ARMAFitted,
-    method::ParametricInterval,
-    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
-    levels::Vector{Float64} = [0.95];
-    alpha_precision::Int = 10,
-    include_median::Bool = true)
+function interval_forecast(
+        fitted::ARMAFitted,
+        method::ParametricInterval,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+        levels::Vector{Float64} = [0.95];
+        alpha_precision::Int = 10,
+        include_median::Bool = true
+    )
 
     if horizon isa Int
         horizon = collect(1:horizon)
@@ -503,51 +517,51 @@ function interval_forecast(fitted::ARMAFitted,
 
     # Create point forecasts
     fc_point = point_forecast(fitted, horizon)
-    
+
     # Structure level and probabilities
     if include_median
         levels = [levels; 0.0]
     end
     levels = sort(levels)
-    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l*0.5).(levels)...), digits = alpha_precision)))
-    
+    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l * 0.5).(levels)...), digits = alpha_precision)))
+
     # Convert ARMA to MA(∞) representation for prediction variance
     ψ = ARMAtoMA(fitted.par.α, fitted.par.β, maximum(horizon) + 10)
-    
+
     # Compute prediction variance for each horizon
     σ² = fitted.par.σ²
     pred_vars = zeros(length(horizon))
-    
+
     for (i, h) in enumerate(horizon)
         # Prediction variance: σ² * (1 + ψ₁² + ψ₂² + ... + ψ_{h-1}²)
         if h == 1
             pred_vars[i] = σ²
         else
-            pred_vars[i] = σ² * (1 + sum(ψ[1:h-1].^2))
+            pred_vars[i] = σ² * (1 + sum(ψ[1:(h - 1)] .^ 2))
         end
     end
-    
+
     # Create intervals for each horizon
     fc_intervals = Vector{ForecastInterval}(undef, length(horizon))
     fc_median = include_median ? zeros(length(horizon)) : nothing
-    
+
     if include_median
         i_median = findfirst(alpha .== 0.5)
     end
-    
+
     for (i, h) in enumerate(horizon)
         # Normal quantiles scaled by prediction standard deviation
         pred_sd = sqrt(pred_vars[i])
         all_quantiles = fc_point[i] .+ quantile.(Normal(0, 1), alpha) .* pred_sd
-        
+
         if method.positivity_correction == :post_clip
             all_quantiles[all_quantiles .< 0] .= 0.0
         end
-        
+
         ls = reverse(all_quantiles[alpha .< 0.5])
         us = all_quantiles[alpha .> 0.5]
         fc_intervals[i] = ForecastInterval(ls, us, levels[levels .> 0])
-        
+
         if include_median
             fc_median[i] = all_quantiles[i_median]
         end
@@ -594,12 +608,14 @@ Generate prediction intervals by simulating ARMA model trajectories.
 - `:zero_floor`: Set negative values to zero during simulation
 - `:post_clip`: Clip final trajectory values to non-negative
 """
-function interval_forecast(fitted::ARMAFitted,
-    method::ModelTrajectoryInterval,
-    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
-    levels::Vector{Float64} = [0.95];
-    alpha_precision::Int = 10,
-    include_median::Bool = true)
+function interval_forecast(
+        fitted::ARMAFitted,
+        method::ModelTrajectoryInterval,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+        levels::Vector{Float64} = [0.95];
+        alpha_precision::Int = 10,
+        include_median::Bool = true
+    )
 
     if horizon isa Int
         horizon = collect(1:horizon)
@@ -617,39 +633,39 @@ function interval_forecast(fitted::ARMAFitted,
 
     # Create point forecasts
     fc_point = point_forecast(fitted, horizon)
-    
+
     # Structure level and probabilities
     if include_median
         levels = [levels; 0.0]
     end
     levels = sort(levels)
-    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l*0.5).(levels)...), digits = alpha_precision)))
-    
+    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l * 0.5).(levels)...), digits = alpha_precision)))
+
     # Extract model parameters
     α = fitted.par.α
     β = fitted.par.β
     σ² = fitted.par.σ²
     μ_func = fitted.model.μ
     μ_pars = fitted.par.μ
-    
+
     p = length(α)
     q = length(β)
     M = maximum([p, q])
     T = length(fitted.x)
     hMax = maximum(horizon)
 
-    m_full = (t -> μ_func(μ_pars, t)).(1:T+hMax)
+    m_full = (t -> μ_func(μ_pars, t)).(1:(T + hMax))
     y_full = [fitted.x .- m_full[1:T]; zeros(hMax)]
     yHat_full = zeros(T + hMax)
     d_error = Normal(0, sqrt(σ²))
 
     # Generate trajectories
     trajectories = zeros(method.n_trajectories, hMax)
-    
+
     for i in 1:method.n_trajectories
-        for t = M+1:T+hMax
+        for t in (M + 1):(T + hMax)
             # Compute conditional expectation
-            yHat_full[t] = sum(α .* y_full[t-1:-1:t-p]) .+ sum(β .* (y_full[t-1:-1:t-q] .- yHat_full[t-1:-1:t-q]))
+            yHat_full[t] = sum(α .* y_full[(t - 1):-1:(t - p)]) .+ sum(β .* (y_full[(t - 1):-1:(t - q)] .- yHat_full[(t - 1):-1:(t - q)]))
             if t > T
                 # Add innovation for future periods
                 y_full[t] = makeStep(yHat_full[t] + m_full[t], d_error, method.positivity_correction == :truncate) - m_full[t]
@@ -668,24 +684,24 @@ function interval_forecast(fitted::ARMAFitted,
     end
 
     trajectories = trajectories[:, horizon]
-    
+
     # Removing the seed
     Random.seed!(nothing)
 
     # Compute intervals from trajectories
     fc_intervals = Vector{ForecastInterval}(undef, length(horizon))
     fc_median = include_median ? zeros(length(horizon)) : nothing
-    
+
     if include_median
         i_median = findfirst(alpha .== 0.5)
     end
 
-    for i = 1:length(horizon)
-        all_quantiles = [quantile(trajectories[:, i], q) for q = alpha]
+    for i in 1:length(horizon)
+        all_quantiles = [quantile(trajectories[:, i], q) for q in alpha]
         ls = reverse(all_quantiles[alpha .< 0.5])
         us = all_quantiles[alpha .> 0.5]
         fc_intervals[i] = ForecastInterval(ls, us, levels[levels .> 0])
-    
+
         if include_median
             fc_median[i] = all_quantiles[i_median]
         end

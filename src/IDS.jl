@@ -23,9 +23,9 @@ Otherwise reverts to constant (mean) forecasting.
 """
 struct IDSModel <: AbstractBaselineModel
     p::Int
-    function IDSModel(;p::Int = 3)
+    function IDSModel(; p::Int = 3)
         (p > 0) || throw(ArgumentError("`p` must be positive"))
-        new(p)
+        return new(p)
     end
 end
 
@@ -46,7 +46,7 @@ struct IDSParameter <: AbstractModelParameters
     b::Float64
     function IDSParameter(a, b)
         ((a isa Real) & (b isa Real)) || throw(ArgumentError("Parameters must be real numbers"))
-        new(Float64(a), Float64(b))
+        return new(Float64(a), Float64(b))
     end
 end
 
@@ -79,14 +79,16 @@ struct IDSFitted <: AbstractFittedModel
     par::IDSParameter
     estimation_setting::IDSEstimationSetting
     temporal_info::TemporalInfo
-    function IDSFitted(x, model::IDSModel, par::IDSParameter,
-        estimation_setting::IDSEstimationSetting,
-        temporal_info::TemporalInfo = TemporalInfo())
+    function IDSFitted(
+            x, model::IDSModel, par::IDSParameter,
+            estimation_setting::IDSEstimationSetting,
+            temporal_info::TemporalInfo = TemporalInfo()
+        )
         #
         if !(x isa Vector{Float64})
             x = Float64.(x)
         end
-        new(x, model, par, estimation_setting, temporal_info)
+        return new(x, model, par, estimation_setting, temporal_info)
     end
 end
 
@@ -118,17 +120,19 @@ Fit IDS model using trend detection and conditional estimation.
 - Uses OLS implementation internally when trend detected
 - Automatically handles cases where p > length(x)
 """
-function fit_baseline(x::Vector{T},
+function fit_baseline(
+        x::Vector{T},
         model::IDSModel;
         setting::Union{IDSEstimationSetting, Nothing} = IDSEstimationSetting(),
-        temporal_info::TemporalInfo = TemporalInfo()) where {T <: Real}
-    
+        temporal_info::TemporalInfo = TemporalInfo()
+    ) where {T <: Real}
+
     p = minimum([model.p, length(x)])
-    y = x[end-p + 1:end]
+    y = x[(end - p + 1):end]
     s = sign.(diff(y))
     if length(unique(s)) == 1
-        X = [ones(p) 1 - p:0]
-        β = inv(X'X)*X'y
+        X = [ones(p) (1 - p):0]
+        β = inv(X'X) * X'y
         par = IDSParameter(β[1], β[2])
     else
         par = IDSParameter(mean(y), 0)
@@ -137,7 +141,7 @@ function fit_baseline(x::Vector{T},
     if isnothing(setting)
         setting = IDSEstimationSetting()
     end
-    IDSFitted(x, model, par, setting, temporal_info)
+    return IDSFitted(x, model, par, setting, temporal_info)
 end
 
 """
@@ -172,8 +176,10 @@ forecasts = point_forecast(fitted, 1:5)
 # For non-trending series: forecasts are constant
 ```
 """
-function point_forecast(fitted::IDSFitted,
-        horizon::Union{Vector{Int}, Int, UnitRange{Int}})
+function point_forecast(
+        fitted::IDSFitted,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}}
+    )
     if horizon isa Int
         horizon = collect(1:horizon)
     end
@@ -183,17 +189,19 @@ function point_forecast(fitted::IDSFitted,
 
     all(horizon .> 0) || throw(ArgumentError("Horizons must be non-negative."))
     length(horizon) .> 0 || throw(ArgumentError("Valid forecast horizons must be provided."))
-    
+
     p = minimum([fitted.model.p, length(fitted.x)])
-    y = fitted.x[end-p + 1:end]
+    y = fitted.x[(end - p + 1):end]
     s = sign.(diff(y))
 
     # Use OLS model implementation for forecasts
     ols_model = OLSModel(p = p, d = 1)
     ols_par = OLSParameter([fitted.par.a, fitted.par.b])
-    ols_fitted = OLSFitted(fitted.x, ols_model, ols_par, OLSEstimationSetting(),
-        fitted.temporal_info)
-    point_forecast(ols_fitted, horizon)
+    ols_fitted = OLSFitted(
+        fitted.x, ols_model, ols_par, OLSEstimationSetting(),
+        fitted.temporal_info
+    )
+    return point_forecast(ols_fitted, horizon)
 end
 
 # Parametric forecast intervals
@@ -208,12 +216,14 @@ intervals when parametric approach is preferred.
 
 Delegates to OLS interval computation after parameter transformation.
 """
-function interval_forecast(fitted::IDSFitted,
-    method::ParametricInterval,
-    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
-    levels::Vector{Float64} = [0.95];
-    alpha_precision::Int = 10,
-    include_median::Bool = true)
+function interval_forecast(
+        fitted::IDSFitted,
+        method::ParametricInterval,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+        levels::Vector{Float64} = [0.95];
+        alpha_precision::Int = 10,
+        include_median::Bool = true
+    )
 
     if horizon isa Int
         horizon = collect(1:horizon)
@@ -228,16 +238,20 @@ function interval_forecast(fitted::IDSFitted,
     length(horizon) .> 0 || throw(ArgumentError("Valid forecast horizons must be provided."))
 
     p = minimum([fitted.model.p, length(fitted.x)])
-    y = fitted.x[end-p + 1:end]
+    y = fitted.x[(end - p + 1):end]
     s = sign.(diff(y))
 
     # Use OLS model implementation for forecasts
     ols_model = OLSModel(p = p, d = 1)
     ols_par = OLSParameter([fitted.par.a, fitted.par.b])
-    ols_fitted = OLSFitted(fitted.x, ols_model, ols_par, OLSEstimationSetting(),
-        fitted.temporal_info)
-    interval_forecast(ols_fitted, method, horizon, levels,
-        alpha_precision = alpha_precision, include_median = include_median)
+    ols_fitted = OLSFitted(
+        fitted.x, ols_model, ols_par, OLSEstimationSetting(),
+        fitted.temporal_info
+    )
+    return interval_forecast(
+        ols_fitted, method, horizon, levels,
+        alpha_precision = alpha_precision, include_median = include_median
+    )
 end
 
 """
@@ -250,12 +264,14 @@ sampling methodology.
 
 Delegates to OLS trajectory generation after parameter transformation.
 """
-function interval_forecast(fitted::IDSFitted,
-    method::ModelTrajectoryInterval,
-    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
-    levels::Vector{Float64} = [0.95];
-    alpha_precision::Int = 10,
-    include_median::Bool = true)
+function interval_forecast(
+        fitted::IDSFitted,
+        method::ModelTrajectoryInterval,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+        levels::Vector{Float64} = [0.95];
+        alpha_precision::Int = 10,
+        include_median::Bool = true
+    )
 
     if horizon isa Int
         horizon = collect(1:horizon)
@@ -270,14 +286,18 @@ function interval_forecast(fitted::IDSFitted,
     length(horizon) .> 0 || throw(ArgumentError("Valid forecast horizons must be provided."))
 
     p = minimum([fitted.model.p, length(fitted.x)])
-    y = fitted.x[end-p + 1:end]
+    y = fitted.x[(end - p + 1):end]
     s = sign.(diff(y))
 
     # Use OLS model implementation for forecasts
     ols_model = OLSModel(p = p, d = 1)
     ols_par = OLSParameter([fitted.par.a, fitted.par.b])
-    ols_fitted = OLSFitted(fitted.x, ols_model, ols_par, OLSEstimationSetting(),
-        fitted.temporal_info)
-    interval_forecast(ols_fitted, method, horizon, levels,
-        alpha_precision = alpha_precision, include_median = include_median)
+    ols_fitted = OLSFitted(
+        fitted.x, ols_model, ols_par, OLSEstimationSetting(),
+        fitted.temporal_info
+    )
+    return interval_forecast(
+        ols_fitted, method, horizon, levels,
+        alpha_precision = alpha_precision, include_median = include_median
+    )
 end

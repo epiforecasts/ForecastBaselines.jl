@@ -22,8 +22,8 @@ Used for bias measurement and signed error analysis.
 """
 struct ForecastError <: AbstractPointError
     relative::Bool
-    function ForecastError(;relative::Bool = false)
-        new(relative)
+    function ForecastError(; relative::Bool = false)
+        return new(relative)
     end
 end
 
@@ -41,8 +41,8 @@ Computes |target - truth| or |target - truth|/truth depending on configuration.
 struct AbsoluteError <: AbstractPointError
     relative::Bool
     inner::Bool
-    function AbsoluteError(;relative::Bool = false, inner::Bool = true)
-        new(relative, inner)
+    function AbsoluteError(; relative::Bool = false, inner::Bool = true)
+        return new(relative, inner)
     end
 end
 
@@ -60,8 +60,8 @@ Used in MSE, RMSE calculations and emphasizes larger errors.
 struct SquaredError <: AbstractPointError
     relative::Bool
     inner::Bool
-    function SquaredError(;relative::Bool = false, inner::Bool = true)
-        new(relative, inner)
+    function SquaredError(; relative::Bool = false, inner::Bool = true)
+        return new(relative, inner)
     end
 end
 
@@ -91,7 +91,7 @@ struct PinballError <: AbstractPointError
     alpha::Union{Float64, Nothing}
     function PinballError(alpha = nothing)
         (isnothing(alpha) || (0 < alpha < 1)) || throw(ArgumentError("`alpha` must be between 0 and 1"))
-        new(alpha)
+        return new(alpha)
     end
 end
 
@@ -127,16 +127,16 @@ function get_target_from_forecast(fc::Forecast, target::Symbol)
         out = fc.median
     elseif (string(target)[1] == 'q') & all((n -> n in string.(0:9)).(split(string(target), "")[2:end]))
         prob_string = string(target)[2:end]
-        alpha = parse(Int, prob_string)/(10^length(prob_string))
+        alpha = parse(Int, prob_string) / (10^length(prob_string))
         if alpha == 0.5
             return fc.median
         end
         has_intervals(fc) || throw(ArgumentError("Forecast object does not have quantile forecast"))
 
-        level = abs(1 - 2*alpha)
+        level = abs(1 - 2 * alpha)
         out = zeros(Union{Missing, Float64}, length(fc.horizon))
 
-        for h = 1:length(fc.horizon)
+        for h in 1:length(fc.horizon)
             if any(fc.intervals[h].levels .≈ level)
                 l_ind = findfirst(fc.intervals[h].levels .≈ level)
                 if alpha > 0.5
@@ -149,7 +149,7 @@ function get_target_from_forecast(fc::Forecast, target::Symbol)
             end
         end
 
-        if !any(ismissing.(out)) 
+        if !any(ismissing.(out))
             out = Vector{Float64}(out)
         end
     end
@@ -158,7 +158,7 @@ function get_target_from_forecast(fc::Forecast, target::Symbol)
     if isnothing(out)
         out = fc.mean
     end
-    
+
     return out
 end
 
@@ -181,47 +181,49 @@ Core error computation for all point error types with automatic dispatch.
 function compute_error(target::Real, truth::Real, error::ForecastError)
     if error.relative
         (truth != 0) || throw(ArgumentError("Truth cannot be zero for relative errors"))
-        return (target - truth)/truth
+        return (target - truth) / truth
     end
-    target - truth
+    return target - truth
 end
 
 function compute_error(target::Real, truth::Real, error::AbsoluteError)
     if error.relative
         (truth != 0) || throw(ArgumentError("Truth cannot be zero for relative errors"))
         if error.inner
-            return abs(target - truth)/truth
+            return abs(target - truth) / truth
         else
-            return abs((target - truth)/truth)
+            return abs((target - truth) / truth)
         end
     end
-    abs(target - truth)
+    return abs(target - truth)
 end
 
 function compute_error(target::Real, truth::Real, error::SquaredError)
     if error.relative
         (truth != 0) || throw(ArgumentError("Truth cannot be zero for relative errors"))
         if error.inner
-            return (target - truth)^2/truth
+            return (target - truth)^2 / truth
         else
-            return ((target - truth)/truth)^2
+            return ((target - truth) / truth)^2
         end
     end
-    (target - truth)^2
+    return (target - truth)^2
 end
 
 function compute_error(target::Real, truth::Real, error::SignError)
-    sign(target - truth)
+    return sign(target - truth)
 end
 
 function compute_error(target::Real, truth::Real, error::PinballError)
-    2*ifelse(truth < target, (1 - error.alpha) * (target - truth), error.alpha*(truth - target))
+    return 2 * ifelse(truth < target, (1 - error.alpha) * (target - truth), error.alpha * (truth - target))
 end
 
-function compute_error(target::Union{Missing, T1},
+function compute_error(
+        target::Union{Missing, T1},
         truth::Union{Missing, T2},
         error::T3,
-        missing_strategy::Symbol = :skip) where {T1 <: Real, T2 <: Real, T3 <: AbstractPointError}
+        missing_strategy::Symbol = :skip
+    ) where {T1 <: Real, T2 <: Real, T3 <: AbstractPointError}
     if !(missing_strategy in [:error, :skip, :propagate])
         missing_strategy = :skip
     end
@@ -259,10 +261,12 @@ Compute vector of point forecast errors with missing value handling.
 
 Vectorized error computation with flexible missing value handling.
 """
-function compute_error(target::Union{Vector{Missing}, Vector{Union{Missing, T1}}, Vector{T1}},
+function compute_error(
+        target::Union{Vector{Missing}, Vector{Union{Missing, T1}}, Vector{T1}},
         truth::Union{Vector{Missing}, Vector{Union{Missing, T2}}, Vector{T2}},
         error::T3,
-        missing_strategy::Symbol = :skip) where {T1, T2 <: Real, T3 <: AbstractPointError}
+        missing_strategy::Symbol = :skip
+    ) where {T1, T2 <: Real, T3 <: AbstractPointError}
     length(target) == length(truth) || throw(ArgumentError("Target and truth must be the same length"))
     errors = [compute_error(target[i], truth[i], error, :propagate) for i in 1:length(truth)]
 
@@ -310,12 +314,14 @@ Compute forecast error for single horizon.
 
 Evaluates forecast accuracy for a specific horizon and target combination.
 """
-function forecast_error(fc::Forecast,
+function forecast_error(
+        fc::Forecast,
         error::T1;
         horizon::Int = fc.horizon[1],
         truth::Union{Vector{T2}, T2, Nothing} = fc.truth,
         target::Symbol = :mean,
-        missing_strategy::Symbol = :skip) where {T1 <: AbstractPointError, T2 <: Real}
+        missing_strategy::Symbol = :skip
+    ) where {T1 <: AbstractPointError, T2 <: Real}
     # Check validity of horizons
     (horizon > 0) || throw(ArgumentError("Horizon must be positive"))
     (horizon in fc.horizon) || throw(ArgumentError("Selected horizon must be in forecast"))
@@ -324,7 +330,7 @@ function forecast_error(fc::Forecast,
     if !(missing_strategy in [:error, :skip, :propagate])
         missing_strategy = :skip
     end
-    
+
     # Check if truth is available
     if isnothing(truth)
         truth = fill(missing, length(fc.horizon))
@@ -350,7 +356,7 @@ function forecast_error(fc::Forecast,
             else
                 ((string(target)[1] == 'q') && all((n -> n in string.(0:9)).(split(string(target), "")[2:end]))) || throw(ArgumentError("Target is not a valid quantile"))
                 prob_string = string(target)[2:end]
-                alpha = parse(Int, prob_string)/(10^length(prob_string))
+                alpha = parse(Int, prob_string) / (10^length(prob_string))
                 error = PinballError(alpha)
             end
         end
@@ -379,11 +385,13 @@ Compute forecast errors for all horizons.
 
 Batch computation of forecast errors across all available horizons.
 """
-function all_forecast_errors(fc::Forecast,
+function all_forecast_errors(
+        fc::Forecast,
         error::T1;
         truth::Union{Vector{T2}, T2, Nothing} = fc.truth,
         target::Symbol = :mean,
-        missing_strategy::Symbol = :skip) where {T1 <: AbstractPointError, T2 <: Real}
+        missing_strategy::Symbol = :skip
+    ) where {T1 <: AbstractPointError, T2 <: Real}
     if isnothing(truth)
         truth = fill(missing, length(fc.horizon))
     end
@@ -391,7 +399,7 @@ function all_forecast_errors(fc::Forecast,
     length(truth) == length(fc.horizon) || throw(ArgumentError("Truth must match length of horizon"))
 
     target_val = get_target_from_forecast(fc, target)
-    
+
     if !(missing_strategy in [:error, :skip, :propagate])
         missing_strategy = :skip
     end
@@ -403,7 +411,7 @@ function all_forecast_errors(fc::Forecast,
             else
                 ((string(target)[1] == 'q') && all((n -> n in string.(0:9)).(split(string(target), "")[2:end]))) || throw(ArgumentError("Target is not a valid quantile"))
                 prob_string = string(target)[2:end]
-                alpha = parse(Int, prob_string)/(10^length(prob_string))
+                alpha = parse(Int, prob_string) / (10^length(prob_string))
                 error = PinballError(alpha)
             end
         end
@@ -431,10 +439,10 @@ Coverage indicator for prediction intervals.
 Returns whether observation falls within prediction interval(s).
 Used for interval calibration assessment.
 """
-struct CoverageError <:AbstractIntervalError
+struct CoverageError <: AbstractIntervalError
     correct_level::Bool
-    function CoverageError(;correct_level::Bool = true)
-        new(correct_level)
+    function CoverageError(; correct_level::Bool = true)
+        return new(correct_level)
     end
 end
 
@@ -489,7 +497,7 @@ function compute_error(target::ForecastInterval, truth::Real, error::CoverageErr
 end
 
 function compute_error(target::ForecastInterval, truth::Real, error::IntervalWidth)
-    target.upper .- target.lower
+    return target.upper .- target.lower
 end
 
 function compute_error(target::ForecastInterval, truth::Real, error::IntervalScore)
@@ -497,38 +505,42 @@ function compute_error(target::ForecastInterval, truth::Real, error::IntervalSco
     alpha = 1 .- target.levels
     out .+= 2 ./ alpha .* (target.lower .- truth) .* (truth .< target.lower)
     out .+= 2 ./ alpha .* (truth .- target.upper) .* (truth .> target.upper)
-    out
+    return out
 end
 
-function compute_error(target::ForecastInterval,
+function compute_error(
+        target::ForecastInterval,
         target_median::Union{Real, Nothing},
         truth::Real,
-        error::CRPScore)
+        error::CRPScore
+    )
     med = !isnothing(target_median)
     y_seq = [reverse(target.lower); ifelse(med, target_median, []); target.upper]
-    alpha = (1 .- target.levels)./2
+    alpha = (1 .- target.levels) ./ 2
     alpha = [reverse(alpha); ifelse(med, 0.5, []); 1 .- alpha]
 
     out = 0.0
-    for i = 1:length(y_seq) - 1
-        if y_seq[i+1] < truth
-            out += alpha[i]*(y_seq[i+1] - y_seq[i])
-        elseif y_seq[i] > truth 
-            out += (1 - alpha[i])*(y_seq[i+1] - y_seq[i])
+    for i in 1:(length(y_seq) - 1)
+        if y_seq[i + 1] < truth
+            out += alpha[i] * (y_seq[i + 1] - y_seq[i])
+        elseif y_seq[i] > truth
+            out += (1 - alpha[i]) * (y_seq[i + 1] - y_seq[i])
         else
-            out += alpha[i]*(truth - y_seq[i])
-            out += (1 - alpha[i])*(y_seq[i+1] - truth)
+            out += alpha[i] * (truth - y_seq[i])
+            out += (1 - alpha[i]) * (y_seq[i + 1] - truth)
         end
     end
-    out
+    return out
 end
 
 
-function compute_error(target::Union{Missing, ForecastInterval},
+function compute_error(
+        target::Union{Missing, ForecastInterval},
         truth::Union{Missing, T1},
         error::T2,
         missing_strategy::Symbol = :skip;
-        target_median::Union{Nothing, T3} = nothing) where {T1 <: Real, T2 <: AbstractIntervalError, T3 <: Real}
+        target_median::Union{Nothing, T3} = nothing
+    ) where {T1 <: Real, T2 <: AbstractIntervalError, T3 <: Real}
     if !(missing_strategy in [:error, :skip, :propagate])
         missing_strategy = :skip
     end
@@ -544,7 +556,7 @@ function compute_error(target::Union{Missing, ForecastInterval},
         returnScalar = false
     end
 
-    if ismissing(target) || ismissing(truth)
+    return if ismissing(target) || ismissing(truth)
         if missing_strategy == :error
             throw(ArgumentError("Missing value in truth or target"))
         end
@@ -564,11 +576,13 @@ function compute_error(target::Union{Missing, ForecastInterval},
     end
 end
 
-function compute_error(target::Union{Vector{ForecastInterval}, Vector{Union{Missing, ForecastInterval}}, Vector{Missing}},
+function compute_error(
+        target::Union{Vector{ForecastInterval}, Vector{Union{Missing, ForecastInterval}}, Vector{Missing}},
         truth::Union{Vector{Missing}, Vector{Union{Missing, T1}}, Vector{T1}},
         error::T2,
         missing_strategy::Symbol = :skip;
-        target_median::Union{Vector{T3}, Vector{Nothing}, Vector{Union{T3, Nothing}}, Nothing} = nothing) where {T1 <: Real, T2 <: AbstractIntervalError, T3 <: Real}
+        target_median::Union{Vector{T3}, Vector{Nothing}, Vector{Union{T3, Nothing}}, Nothing} = nothing
+    ) where {T1 <: Real, T2 <: AbstractIntervalError, T3 <: Real}
     length(target) == length(truth) || throw(ArgumentError("Target and truth must be the same length"))
     if isnothing(target_median)
         target_median = fill(nothing, length(target))
@@ -607,11 +621,13 @@ function compute_error(target::Union{Vector{ForecastInterval}, Vector{Union{Miss
 end
 
 
-function forecast_error(fc::Forecast,
+function forecast_error(
+        fc::Forecast,
         error::T1;
         horizon::Int = fc.horizon[1],
         truth::Union{Vector{T2}, T2, Nothing} = fc.truth,
-        missing_strategy::Symbol = :skip) where {T1 <: AbstractIntervalError, T2 <: Real}
+        missing_strategy::Symbol = :skip
+    ) where {T1 <: AbstractIntervalError, T2 <: Real}
     # Check validity of horizons
     (horizon > 0) || throw(ArgumentError("Horizon must be positive"))
     (horizon in fc.horizon) || throw(ArgumentError("Selected horizon must be in forecast"))
@@ -620,7 +636,7 @@ function forecast_error(fc::Forecast,
     if !(missing_strategy in [:error, :skip, :propagate])
         missing_strategy = :skip
     end
-    
+
     # Check if truth is available
     if isnothing(truth)
         truth = fill(missing, length(truth.horizon))
@@ -642,15 +658,17 @@ function forecast_error(fc::Forecast,
     end
 end
 
-function all_forecast_errors(fc::Forecast,
+function all_forecast_errors(
+        fc::Forecast,
         error::T1;
         truth::Union{Vector{T2}, T2, Nothing} = fc.truth,
-        missing_strategy::Symbol = :skip) where {T1 <: AbstractIntervalError, T2 <: Real}
+        missing_strategy::Symbol = :skip
+    ) where {T1 <: AbstractIntervalError, T2 <: Real}
     if isnothing(truth)
         truth = fill(missing, length(fc.horizon))
     end
     length(truth) == length(fc.horizon) || throw(ArgumentError("Truth must match length of horizon"))
-    
+
     if !(missing_strategy in [:error, :skip, :propagate])
         missing_strategy = :skip
     end
@@ -686,8 +704,8 @@ struct LogLoss <: AbstractTrajectoryError
     offset::Float64
     score::Bool
     # For continuous data might add kernel here?
-    function LogLoss(;offset::T1 = 0.01, score::Bool = false) where T1 <: Real
-        new(Float64(offset), score)
+    function LogLoss(; offset::T1 = 0.01, score::Bool = false) where {T1 <: Real}
+        return new(Float64(offset), score)
     end
 end
 
@@ -706,7 +724,7 @@ More accurate than interval-based approximation when trajectories available.
 struct CRPScore_trajectory <: AbstractTrajectoryError
     n_points::Int
     alpha_seq::Vector{Float64}
-    function CRPScore_trajectory(;n_points::Int = 0, alpha_seq = Float64[])
+    function CRPScore_trajectory(; n_points::Int = 0, alpha_seq = Float64[])
         if alpha_seq isa StepRangeLen
             alpha_seq = collect(alpha_seq)
         end
@@ -716,7 +734,7 @@ struct CRPScore_trajectory <: AbstractTrajectoryError
         (alpha_seq isa Vector) || throw(ArgumentError("Sequence of probabilities `alpha_seq` must be a vector."))
         all(0 .< alpha_seq .< 1) || throw(ArgumentError("All probabilities in `alpha_seq` must be between 0 and 1"))
         ((n_points == 0) || (length(alpha_seq) == 0)) || throw(ArgumentError("Specify only one, the number of points `n_points` or the sequence of probabilities `alpha_seq`"))
-        new(n_points, alpha_seq)
+        return new(n_points, alpha_seq)
     end
 end
 
@@ -734,7 +752,7 @@ Evaluates probabilistic forecast accuracy using full trajectory information.
 """
 function compute_error(target::Vector{Float64}, truth::Real, error::LogLoss)
     n_trajectories = length(target)
-    -log(mean(target .== truth) + error.offset)
+    return -log(mean(target .== truth) + error.offset)
 end
 
 function compute_error(target::Vector{Float64}, truth::Real, error::CRPScore_trajectory)
@@ -743,7 +761,7 @@ function compute_error(target::Vector{Float64}, truth::Real, error::CRPScore_tra
     if error.n_points > 1
         y_min = minimum(target)
         y_max = maximum(target)
-        stepsize = (y_max - y_min)/(error.n_points - 1)
+        stepsize = (y_max - y_min) / (error.n_points - 1)
         y_seq = y_min:stepsize:y_max
     elseif length(error.alpha_seq) > 0
         alpha = error.alpha_seq
@@ -751,28 +769,30 @@ function compute_error(target::Vector{Float64}, truth::Real, error::CRPScore_tra
     else
         y_seq = sort(unique(target))
     end
-    
+
     p = (yy -> mean(target .== yy)).(y_seq)
     alpha = cumsum(p)
 
     out = 0.0
-    for i = 1:length(y_seq) - 1
-        if y_seq[i+1] < truth
-            out += alpha[i]*(y_seq[i+1] - y_seq[i])
-        elseif y_seq[i] > truth 
-            out += (1 - alpha[i])*(y_seq[i+1] - y_seq[i])
+    for i in 1:(length(y_seq) - 1)
+        if y_seq[i + 1] < truth
+            out += alpha[i] * (y_seq[i + 1] - y_seq[i])
+        elseif y_seq[i] > truth
+            out += (1 - alpha[i]) * (y_seq[i + 1] - y_seq[i])
         else
-            out += alpha[i]*(truth - y_seq[i])
-            out += (1 - alpha[i])*(y_seq[i+1] - truth)
+            out += alpha[i] * (truth - y_seq[i])
+            out += (1 - alpha[i]) * (y_seq[i + 1] - truth)
         end
     end
-    out
+    return out
 end
 
-function compute_error(target::Union{Missing, Vector{T1}},
+function compute_error(
+        target::Union{Missing, Vector{T1}},
         truth::Union{Missing, T2},
         error::T3,
-        missing_strategy::Symbol = :skip) where {T1 <: Real, T2 <: Real, T3 <: AbstractTrajectoryError}
+        missing_strategy::Symbol = :skip
+    ) where {T1 <: Real, T2 <: Real, T3 <: AbstractTrajectoryError}
     if !(missing_strategy in [:error, :skip, :propagate])
         missing_strategy = :skip
     end
@@ -793,10 +813,12 @@ function compute_error(target::Union{Missing, Vector{T1}},
     end
 end
 
-function compute_error(target::Union{Matrix{T1}, Matrix{Union{Missing, T1}}, Matrix{Missing}},
+function compute_error(
+        target::Union{Matrix{T1}, Matrix{Union{Missing, T1}}, Matrix{Missing}},
         truth::Union{Vector{Missing}, Vector{Union{Missing, T2}}, Vector{T2}},
         error::T3,
-        missing_strategy::Symbol = :skip) where {T1 <: Real, T2 <: Real, T3 <: AbstractTrajectoryError}
+        missing_strategy::Symbol = :skip
+    ) where {T1 <: Real, T2 <: Real, T3 <: AbstractTrajectoryError}
     size(target)[2] == length(truth) || throw(ArgumentError("Number of columns in target must equal the length of truth"))
     errors = [compute_error(target[:, i], truth[i], error, :propagate) for i in 1:length(truth)]
 
@@ -822,11 +844,13 @@ function compute_error(target::Union{Matrix{T1}, Matrix{Union{Missing, T1}}, Mat
     end
 end
 
-function forecast_error(fc::Forecast,
+function forecast_error(
+        fc::Forecast,
         error::T1;
         horizon::Int = fc.horizon[1],
         truth::Union{Vector{T2}, T2, Nothing} = fc.truth,
-        missing_strategy::Symbol = :skip) where {T1 <: AbstractTrajectoryError, T2 <: Real}
+        missing_strategy::Symbol = :skip
+    ) where {T1 <: AbstractTrajectoryError, T2 <: Real}
     # Check validity of horizons
     (horizon > 0) || throw(ArgumentError("Horizon must be positive"))
     (horizon in fc.horizon) || throw(ArgumentError("Selected horizon must be in forecast"))
@@ -835,7 +859,7 @@ function forecast_error(fc::Forecast,
     if !(missing_strategy in [:error, :skip, :propagate])
         missing_strategy = :skip
     end
-    
+
     # Check if truth is available
     if isnothing(truth)
         truth = fill(missing, length(truth.horizon))
@@ -857,15 +881,17 @@ function forecast_error(fc::Forecast,
     end
 end
 
-function all_forecast_errors(fc::Forecast,
+function all_forecast_errors(
+        fc::Forecast,
         error::T1;
         truth::Union{Vector{T2}, T2, Nothing} = fc.truth,
-        missing_strategy::Symbol = :skip) where {T1 <: AbstractTrajectoryError, T2 <: Real}
+        missing_strategy::Symbol = :skip
+    ) where {T1 <: AbstractTrajectoryError, T2 <: Real}
     if isnothing(truth)
         truth = fill(missing, length(fc.horizon))
     end
     length(truth) == length(fc.horizon) || throw(ArgumentError("Truth must match length of horizon"))
-    
+
     if !(missing_strategy in [:error, :skip, :propagate])
         missing_strategy = :skip
     end
@@ -885,10 +911,12 @@ Compute forecast errors across multiple forecast objects.
 Batch processing for forecast evaluation across different models, time periods,
 or forecast origins. Returns vector of error values matching input forecasts.
 """
-function forecast_error(fc::Vector{Forecast}, error::T1;
-    horizon::Int = fc[1].horizon[1],
-    missing_strategy::Symbol = :skip) where {T1 <: AbstractError}
-    [forecast_error(fc[i], error, horizon = horizon, missing_strategy = missing_strategy) for i = 1:length(fc)]
+function forecast_error(
+        fc::Vector{Forecast}, error::T1;
+        horizon::Int = fc[1].horizon[1],
+        missing_strategy::Symbol = :skip
+    ) where {T1 <: AbstractError}
+    return [forecast_error(fc[i], error, horizon = horizon, missing_strategy = missing_strategy) for i in 1:length(fc)]
 end
 
 """
@@ -900,7 +928,9 @@ Compute all forecast errors across multiple forecast objects.
 Returns nested vector structure: outer vector for forecasts, 
 inner vectors for horizons within each forecast.
 """
-function all_forecast_errors(fc::Vector{Forecast}, error::T1;
-    missing_strategy::Symbol = :skip) where {T1 <: AbstractError}
-    [all_forecast_errors(fc[i], error, missing_strategy = missing_strategy) for i = 1:length(fc)]
+function all_forecast_errors(
+        fc::Vector{Forecast}, error::T1;
+        missing_strategy::Symbol = :skip
+    ) where {T1 <: AbstractError}
+    return [all_forecast_errors(fc[i], error, missing_strategy = missing_strategy) for i in 1:length(fc)]
 end

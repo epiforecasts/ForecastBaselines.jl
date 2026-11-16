@@ -126,12 +126,14 @@ upper_95 = [interval.upper[end] for interval in results[3]]
 - Requires sufficient historical data for reliable error estimation
 - Uses random seed from method for reproducibility
 """
-function interval_forecast(fitted::AbstractFittedModel,
-    method::EmpiricalInterval,
-    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
-    levels::Vector{Float64} = [0.95];
-    alpha_precision::Int = 10,
-    include_median::Bool = true)
+function interval_forecast(
+        fitted::AbstractFittedModel,
+        method::EmpiricalInterval,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+        levels::Vector{Float64} = [0.95];
+        alpha_precision::Int = 10,
+        include_median::Bool = true
+    )
     if horizon isa Int
         horizon = collect(1:horizon)
     end
@@ -142,7 +144,7 @@ function interval_forecast(fitted::AbstractFittedModel,
     # Validate input:
     all(0 .< levels .< 1.0) || throw(ArgumentError("Levels must be between 0 and 1"))
     all(horizon .> 0) || throw(ArgumentError("Horizons must be positive"))
-    
+
     # Setting seed if specified
     Random.seed!(method.seed)
 
@@ -154,24 +156,24 @@ function interval_forecast(fitted::AbstractFittedModel,
         levels = [levels; 0.0]
     end
     levels = sort(levels)
-    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l*0.5).(levels)...), digits = alpha_precision)))
+    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l * 0.5).(levels)...), digits = alpha_precision)))
 
     # Compute all past forecasts here
     # In some settings we only need one horizon
     errors = historical_forecast_errors(fitted, ifelse(method.stepwise, [1], horizon), method.min_observation)
- 
+
     # Account for symmetry_correction here
     if method.symmetry_correction
-        for i = 1:length(errors)
+        for i in 1:length(errors)
             append!(errors[i], -errors[i])
         end
     end
 
     # Fit a bootstrap distribution here
     error_distribution = Vector{Union{Vector{Float64}, ContinuousUnivariateDistribution}}(errors)
-    
+
     if method.bootstrap_distribution isa ContinuousUnivariateDistribution
-        for i = 1:length(errors)
+        for i in 1:length(errors)
             error_distribution[i] = Distributions.fit(typeof(method.bootstrap_distribution), errors[i])
         end
     else
@@ -184,10 +186,10 @@ function interval_forecast(fitted::AbstractFittedModel,
     # Generate trajectories here
     trajectories = zeros(method.n_trajectories, maximum(horizon))
     trajectories[:, 1] = [make_step(error_distribution[1], fc_point[1], truncated, clip) for _ in 1:method.n_trajectories]
-    
-    for i = 2:maximum(horizon)
+
+    for i in 2:maximum(horizon)
         if method.stepwise
-            trajectories[:, i] = [make_step(error_distribution[1], from, truncated, clip) for from = trajectories[:, i-1]]
+            trajectories[:, i] = [make_step(error_distribution[1], from, truncated, clip) for from in trajectories[:, i - 1]]
         else
             trajectories[:, i] = [make_step(error_distribution[1], fc_point[i], truncated, clip) for _ in 1:method.n_trajectories]
         end
@@ -205,18 +207,18 @@ function interval_forecast(fitted::AbstractFittedModel,
     trajectories = trajectories[:, horizon]
 
     fc_intervals = Vector{ForecastInterval}(undef, length(horizon))
-    fc_median = include_median ? zeros(length(horizon)) : nothing 
+    fc_median = include_median ? zeros(length(horizon)) : nothing
 
     if include_median
         i_median = findfirst(alpha .== 0.5)
     end
 
-    for h = 1:length(horizon)
-        all_quantiles = [quantile(trajectories[:, h], q) for q = alpha]
+    for h in 1:length(horizon)
+        all_quantiles = [quantile(trajectories[:, h], q) for q in alpha]
         ls = reverse(all_quantiles[alpha .< 0.5])
         us = all_quantiles[alpha .> 0.5]
         fc_intervals[h] = ForecastInterval(ls, us, levels[levels .> 0])
-    
+
         if include_median
             fc_median[h] = all_quantiles[i_median]
         end

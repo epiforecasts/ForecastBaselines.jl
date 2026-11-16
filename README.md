@@ -561,6 +561,8 @@ Documentation is available through Julia's help system:
 Contributions are welcome through issues and pull requests.
 To add models, see also ModelTemplate.jl
 
+Code is formatted with [Runic](https://github.com/fredrikekre/Runic.jl), and CI checks it on every pull request. Run `pre-commit install` once to format on each commit, or format by hand with `julia -m Runic --inplace src test` after installing Runic. To leave the formatting commit out of `git blame`, run `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
+
 ## Citation
 
 ```bibtex

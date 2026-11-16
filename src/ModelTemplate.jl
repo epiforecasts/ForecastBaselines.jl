@@ -27,10 +27,12 @@ struct ModelnameFitted <: AbstractFittedModel
     temporal_info::TemporalInfo
 end
 
-function fit_baseline(x::Vector{T},
+function fit_baseline(
+        x::Vector{T},
         model::ModelnameModel;
         setting::ModelnameEstimationSetting = ModelnameEstimationSetting(),
-        temporal_info::TemporalInfo = TemporalInfo()) where {T <: Real}
+        temporal_info::TemporalInfo = TemporalInfo()
+    ) where {T <: Real}
     # Function to fit model to time series
     # Ideally takes time series model and estimation setting as input
     # That way, the EmpiricalInterval method for prediction intervals can be applied
@@ -44,8 +46,8 @@ function point_forecast(fitted::ModelnameFitted, horizon::Union{Vector{Int}, Int
         horizon = collect(horizon)
     end
     all(horizon .> 0) || throw(ArgumentError("Horizons must be non-negative."))
-    length(horizon) .> 0 || throw(ArgumentError("Valid forecast horisons must be provided."))
-    
+    return length(horizon) .> 0 || throw(ArgumentError("Valid forecast horisons must be provided."))
+
     # Function to compute point forecasts.
     # Horizon checks are left here for convenience
 end
@@ -58,12 +60,14 @@ end
 
 # For ParametricInterval or ModelTrajectoryInterval
 
-function interval_forecast(fitted::ModelnameFitted,
-    method::ParametricInterval,
-    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
-    levels::Vector{Float64} = [0.95];
-    alpha_precision::Int = 10,
-    include_median::Bool = true)
+function interval_forecast(
+        fitted::ModelnameFitted,
+        method::ParametricInterval,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+        levels::Vector{Float64} = [0.95];
+        alpha_precision::Int = 10,
+        include_median::Bool = true
+    )
 
     if horizon isa Int
         horizon = collect(1:horizon)
@@ -84,7 +88,7 @@ function interval_forecast(fitted::ModelnameFitted,
         levels = [levels; 0.0]
     end
     levels = sort(levels)
-    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l*0.5).(levels)...), digits = alpha_precision)))
+    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l * 0.5).(levels)...), digits = alpha_precision)))
 
     # Positivity corrections can only be :none or :post_clip
     # For :post_clip make sure to clip all intervals at zero
@@ -96,12 +100,14 @@ function interval_forecast(fitted::ModelnameFitted,
 end
 
 
-function interval_forecast(fitted::ModelnameFitted,
-    method::ModelTrajectoryInterval,
-    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
-    levels::Vector{Float64} = [0.95];
-    alpha_precision::Int = 10,
-    include_median::Bool = true)
+function interval_forecast(
+        fitted::ModelnameFitted,
+        method::ModelTrajectoryInterval,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+        levels::Vector{Float64} = [0.95];
+        alpha_precision::Int = 10,
+        include_median::Bool = true
+    )
 
     if horizon isa Int
         horizon = collect(1:horizon)
@@ -122,7 +128,7 @@ function interval_forecast(fitted::ModelnameFitted,
         levels = [levels; 0.0]
     end
     levels = sort(levels)
-    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l*0.5).(levels)...), digits = alpha_precision)))
+    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l * 0.5).(levels)...), digits = alpha_precision)))
 
     # Positivity corrections can be :none or :post_clip, :truncate and :zero_floor
     # For :post_clip make sure to clip all intervals at zero
@@ -133,4 +139,3 @@ function interval_forecast(fitted::ModelnameFitted,
 
     return fc_point, fc_median, fc_intervals, trajectories
 end
-

@@ -38,7 +38,7 @@ struct LogPlusOneTransform <: AbstractDataTransformation
     clip_zero::Bool
     function LogPlusOneTransform(c = 1, clip_zero = false)
         c isa Real || throw(ArgumentError("Constant must be a real number"))
-        new(c, clip_zero)
+        return new(c, clip_zero)
     end
 end
 
@@ -99,7 +99,7 @@ struct PowerTransform <: AbstractDataTransformation
     lambda::Float64
     function PowerTransform(lambda)
         lambda isa Real || throw(ArgumentError("lambda must be a real number"))
-        new(lambda)
+        return new(lambda)
     end
 end
 
@@ -126,7 +126,7 @@ struct PowerPlusOneTransform <: AbstractDataTransformation
     function PowerPlusOneTransform(lambda; constant = 1.0, clip_zero = false)
         lambda isa Real || throw(ArgumentError("lambda must be a real number"))
         constant isa Real || throw(ArgumentError("constant must be a real number"))
-        new(lambda, constant, clip_zero)
+        return new(lambda, constant, clip_zero)
     end
 end
 
@@ -143,7 +143,7 @@ Apply forward transformation to data vector.
 - `Vector{Float64}`: Transformed data
 """
 function transform(x::Vector{T}, t::NoTransform) where {T <: Real}
-    x
+    return x
 end
 
 """
@@ -159,7 +159,7 @@ Apply inverse transformation to recover original scale.
 - `Vector{Float64}`: Data on original scale
 """
 function inverse_transform(x::Vector{T}, t::NoTransform) where {T <: Real}
-    x
+    return x
 end
 
 function transform(x::Vector{T}, t::LogPlusOneTransform) where {T <: Real}
@@ -189,7 +189,7 @@ function transform(x::Vector{T}, t::PowerTransform) where {T <: Real}
     if t.lambda == 0
         return log.(x)
     else
-        x.^(t.lambda)
+        x .^ (t.lambda)
     end
 end
 
@@ -198,7 +198,7 @@ function inverse_transform(y::Vector{T}, t::PowerTransform) where {T <: Real}
     if t.lambda == 0
         return exp.(y)
     else
-        y.^(1 ./ t.lambda)
+        y .^ (1 ./ t.lambda)
     end
 end
 
@@ -210,7 +210,7 @@ function transform(x::Vector{T}, t::PowerPlusOneTransform) where {T <: Real}
         if t.clip_zero
             x[x .< 1] .= 1.0
         end
-        (x .+ t.constant).^(t.lambda)
+        (x .+ t.constant) .^ (t.lambda)
     end
 end
 
@@ -218,8 +218,8 @@ function inverse_transform(y::Vector{T}, t::PowerPlusOneTransform) where {T <: R
     if !t.clip_zero
         minimum(y) .> -t.constant || throw(ArgumentError("Power transform requires positive values"))
     end
-    
-    if t.lambda == 0
+
+    return if t.lambda == 0
         if t.clip_zero
             y = max.(y, 0.0)
             return max.(exp.(y) .- t.constant, 0.0)
@@ -229,9 +229,9 @@ function inverse_transform(y::Vector{T}, t::PowerPlusOneTransform) where {T <: R
     else
         if t.clip_zero
             y = max.(y, 0.0)
-            return max.(y.^(1 ./ t.lambda) .- t.constant, 0.0)
+            return max.(y .^ (1 ./ t.lambda) .- t.constant, 0.0)
         else
-            return y.^(1 ./ t.lambda) .- t.constant
+            return y .^ (1 ./ t.lambda) .- t.constant
         end
     end
 end
@@ -280,7 +280,7 @@ struct TransformedParameter
     xTransformed::Vector{Float64}
     function TransformedParameter(modelParameter, seasParameter, xTransformed)
         xTransformed isa Vector{Float64} || throw(ArgumentError("xTransformed must be a real-valued Vector"))
-        new(modelParameter, seasParameter, xTransformed)
+        return new(modelParameter, seasParameter, xTransformed)
     end
 end
 
@@ -306,15 +306,17 @@ struct TransformedFitted <: AbstractFittedModel
     fitted_baseline::AbstractFittedModel
     estimationSetting::Union{AbstractEstimationSetting, Nothing}
     temporal_info::TemporalInfo
-    function TransformedFitted(x, model::TransformedModel,
+    function TransformedFitted(
+            x, model::TransformedModel,
             par::TransformedParameter,
             fitted_baseline::AbstractFittedModel,
-            estimation_setting::Union{AbstractEstimationSetting, Nothing} = nothing,
-            temporal_info::TemporalInfo = TemporalInfo())
+            estimation_setting::Union{AbstractEstimationSetting, Nothing} = nothing,
+            temporal_info::TemporalInfo = TemporalInfo()
+        )
         if !(x isa Vector{Float64})
             Float64.(x)
         end
-        new(x, model, par, fitted_baseline, estimation_setting, temporal_info)
+        return new(x, model, par, fitted_baseline, estimation_setting, temporal_info)
     end
 end
 
@@ -334,13 +336,15 @@ Add transformations to any forecasting model.
 - Original model if no transformations specified
 - `TransformedModel` wrapper if transformations specified
 """
-function transform(model::AbstractBaselineModel;
+function transform(
+        model::AbstractBaselineModel;
         transformation::Union{AbstractDataTransformation, Nothing} = nothing,
-        season_trend::Union{STTransform, Nothing} = nothing)
+        season_trend::Union{STTransform, Nothing} = nothing
+    )
     if isnothing(transformation) && isnothing(season_trend)
         return model
     end
-    TransformedModel(model, transformation, season_trend)
+    return TransformedModel(model, transformation, season_trend)
 end
 
 """
@@ -359,10 +363,12 @@ Fit model with full transformation pipeline.
 
 All transformations are stored for proper forecast inversion.
 """
-function fit_baseline(x::Vector{T},
+function fit_baseline(
+        x::Vector{T},
         model::TransformedModel;
         setting::Union{AbstractEstimationSetting, Nothing} = nothing,
-        temporal_info::TemporalInfo = TemporalInfo()) where {T <: Real}
+        temporal_info::TemporalInfo = TemporalInfo()
+    ) where {T <: Real}
     #
     # First run data transformation, then fit season/trend
     if !isnothing(model.transformation)
@@ -377,7 +383,7 @@ function fit_baseline(x::Vector{T},
         xFiltered = xTransformed
         seasPar = nothing
     end
-    
+
     # xFiltered is the time series -> transformed -> filtered
 
     # Fit baseline model on final time series
@@ -387,7 +393,7 @@ function fit_baseline(x::Vector{T},
 
     # Return results as original time series, transformed model,
     # transformed parameters, fitted baseline, settings and temporal info
-    TransformedFitted(x, model, tPars, fitted_baseline, setting, temporal_info)
+    return TransformedFitted(x, model, tPars, fitted_baseline, setting, temporal_info)
 end
 
 """
@@ -404,24 +410,28 @@ Generate forecasts with automatic transformation inversion.
    - Sample trajectories (element-wise transformation)
 3. **Seasonal Restoration**: Add seasonal-trend components back if used
 """
-function forecast(fitted::TransformedFitted;
+function forecast(
+        fitted::TransformedFitted;
         interval_method::AbstractIntervalMethod = NoInterval(),
         horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
         levels::Vector{Float64} = [0.95],
         alpha_precision::Int = 10,
         include_median::Bool = true,
         truth::Union{Vector{Float64}, Nothing} = nothing,
-        model_name::String = "")
+        model_name::String = ""
+    )
     #
     # First forecast on the baseline level
-    fc_baseline = forecast(fitted.fitted_baseline,
+    fc_baseline = forecast(
+        fitted.fitted_baseline,
         interval_method = interval_method,
         horizon = horizon,
         levels = levels,
         alpha_precision = alpha_precision,
         include_median = include_median,
         truth = nothing,
-        model_name = model_name)
+        model_name = model_name
+    )
     # Save point and interval predictions
     fc_point = fc_baseline.mean
     fc_median = fc_baseline.median
@@ -436,7 +446,7 @@ function forecast(fitted::TransformedFitted;
         fc_intervals = forecastOut.intervals
         fc_trajectories = forecastOut.trajectories
     end
-    
+
     # Then, if data is transformed, reverse it
     if !isnothing(fitted.model.transformation)
         t = fitted.model.transformation
@@ -458,13 +468,14 @@ function forecast(fitted::TransformedFitted;
             end
         end
         if !isnothing(fc_trajectories)
-            for h = 1:size(fc_trajectories)[2]
+            for h in 1:size(fc_trajectories)[2]
                 fc_trajectories[:, h] = inverse_transform(fc_trajectories[:, h], t)
-            end            
+            end
         end
     end
 
-    forecastOut = Forecast(horizon = fc_baseline.horizon,
+    forecastOut = Forecast(
+        horizon = fc_baseline.horizon,
         mean = fc_point,
         median = fc_median,
         intervals = fc_intervals,
@@ -473,9 +484,10 @@ function forecast(fitted::TransformedFitted;
         reference_date = fc_baseline.reference_date,
         target_date = fc_baseline.target_date,
         resolution = fc_baseline.resolution,
-        model_name = fc_baseline.model_name)
+        model_name = fc_baseline.model_name
+    )
 
-    forecastOut
+    return forecastOut
 end
 
 """
@@ -496,15 +508,15 @@ Transforms all components of a Forecast object:
 - Sample trajectories (element-wise)
 """
 function transform(x::Nothing, t::AbstractDataTransformation)
-    nothing
+    return nothing
 end
 
 function transform(x::Matrix{Float64}, t::AbstractDataTransformation)
     out = zero(x)
-    for i = 1:size(x)[2]
+    for i in 1:size(x)[2]
         out[:, i] = transform(x[:, i], t)
     end
-    out
+    return out
 end
 
 function transform(fc::Forecast, t::AbstractDataTransformation)
@@ -513,7 +525,8 @@ function transform(fc::Forecast, t::AbstractDataTransformation)
     else
         intervalsOut = nothing
     end
-    Forecast(horizon = fc.horizon,
+    return Forecast(
+        horizon = fc.horizon,
         mean = transform(fc.mean, t),
         median = transform(fc.median, t),
         intervals = intervalsOut,
@@ -521,5 +534,6 @@ function transform(fc::Forecast, t::AbstractDataTransformation)
         trajectories = transform(fc.trajectories, t),
         reference_date = fc.reference_date,
         target_date = fc.target_date,
-        resolution = fc.resolution)
+        resolution = fc.resolution
+    )
 end

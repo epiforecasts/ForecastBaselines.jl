@@ -80,14 +80,16 @@ Automatically extracts temporal metadata from the fitted model:
 - `target_date`: Dates being forecast
 - `resolution`: Time step between observations
 """
-function forecast(fitted::AbstractFittedModel;
-                  interval_method::AbstractIntervalMethod = NoInterval(),
-                  horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
-                  levels::Vector{Float64} = [0.95],
-                  alpha_precision::Int = 10,
-                  include_median::Bool = true,
-                  truth::Union{Vector{Float64}, Nothing} = nothing,
-                  model_name::String = "")
+function forecast(
+        fitted::AbstractFittedModel;
+        interval_method::AbstractIntervalMethod = NoInterval(),
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+        levels::Vector{Float64} = [0.95],
+        alpha_precision::Int = 10,
+        include_median::Bool = true,
+        truth::Union{Vector{Float64}, Nothing} = nothing,
+        model_name::String = ""
+    )
     #
     # Validate input
     if horizon isa Int
@@ -105,7 +107,8 @@ function forecast(fitted::AbstractFittedModel;
     ti = fitted.temporal_info
     rd = ti.start + ti.resolution * (length(fitted.x) - 1)
 
-    Forecast(horizon = horizon,
+    return Forecast(
+        horizon = horizon,
         mean = fc_point,
         median = fc_median,
         intervals = fc_interval,
@@ -114,5 +117,6 @@ function forecast(fitted::AbstractFittedModel;
         reference_date = rd,
         target_date = rd .+ horizon .* ti.resolution,
         resolution = ti.resolution,
-        model_name = model_name)
+        model_name = model_name
+    )
 end

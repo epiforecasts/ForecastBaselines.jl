@@ -30,7 +30,7 @@ struct INARCHModel <: AbstractBaselineModel
     s::Int
     k::Int
     nb::Bool
-    function INARCHModel(;p = 1, s = 0, k = 1, nb = false)
+    function INARCHModel(; p = 1, s = 0, k = 1, nb = false)
         (s >= 0) || throw(ArgumentError("Seasonality must be a non-negative integer"))
         if s == 0
             k = 0
@@ -39,7 +39,7 @@ struct INARCHModel <: AbstractBaselineModel
         if k == 0
             s = 0
         end
-        new(p, s, k, nb)
+        return new(p, s, k, nb)
     end
 end
 
@@ -76,7 +76,7 @@ struct INARCHParameter <: AbstractModelParameters
             γ = Float64[]
         end
 
-        new(Float64(β0), Float64.(α), Float64.(ϕ), Float64.(γ))   
+        return new(Float64(β0), Float64.(α), Float64.(ϕ), Float64.(γ))
     end
 end
 
@@ -111,16 +111,18 @@ struct INARCHFitted <: AbstractFittedModel
     par::INARCHParameter
     estimation_setting::INARCHEstimationSetting
     temporal_info::TemporalInfo
-    function INARCHFitted(x,
+    function INARCHFitted(
+            x,
             model::INARCHModel,
             par::INARCHParameter,
             estimation_setting::INARCHEstimationSetting,
-            temporal_info::TemporalInfo = TemporalInfo())
+            temporal_info::TemporalInfo = TemporalInfo()
+        )
         #
         if !(x isa Vector{Int})
             x = Int.(x)
         end
-        new(x, model, par, estimation_setting, temporal_info)
+        return new(x, model, par, estimation_setting, temporal_info)
     end
 end
 
@@ -131,19 +133,19 @@ function inarchTF(θ, x::Vector{Int}, model::INARCHModel, returnPars::Bool = fal
     k = model.k
     nb = model.nb
 
-    nPar = 1 + p + 2*k + nb
+    nPar = 1 + p + 2 * k + nb
 
     β0 = θ[1]
-    α = θ[2:1+p]
-    ϕ =  Inf
+    α = θ[2:(1 + p)]
+    ϕ = Inf
     if nb
         ϕ = θ[2 + p]
     end
-    γ = θ[2 + p + nb:end]
+    γ = θ[(2 + p + nb):end]
     if returnPars
         return INARCHParameter(β0, α, ϕ, γ)
     end
-    if (β0 <= 0) | any(α .< 0) | any(α .> 1) | (sum(α) > 1) | (ϕ <= 0)
+    if (β0 <= 0) | any(α .< 0) | any(α .> 1) | (sum(α) > 1) | (ϕ <= 0)
         return Inf
     end
 
@@ -161,22 +163,22 @@ function inarchTF(θ, x::Vector{Int}, model::INARCHModel, returnPars::Bool = fal
     xScl = x ./ seas
 
     @inbounds for i in 1:p
-        λ .+= α[i] .* @view xScl[(p+1:T) .- i]
+        λ .+= α[i] .* @view xScl[((p + 1):T) .- i]
     end
 
-    λ = λ .* seas[p+1:end]
+    λ = λ .* seas[(p + 1):end]
 
     if nb
         pp = ϕ ./ (ϕ .+ λ)
         if any(.!(0 .< pp .< 1))
             return Inf
         end
-        out = -sum(logpdf.(NegativeBinomial.(ϕ, pp), @view x[p+1:end]))
+        out = -sum(logpdf.(NegativeBinomial.(ϕ, pp), @view x[(p + 1):end]))
     else
-        out = -sum(logpdf.(Poisson.(λ), @view x[p+1:end]))
+        out = -sum(logpdf.(Poisson.(λ), @view x[(p + 1):end]))
     end
 
-    out
+    return out
 end
 
 """
@@ -202,24 +204,28 @@ Fit INARCH model using maximum likelihood estimation.
 3. **Optimisation**: Uses constrained optimisation with penalty methods
 4. **Initialisation**: Method-of-moments starting values
 """
-function fit_baseline(x::Vector{Int},
+function fit_baseline(
+        x::Vector{Int},
         model::INARCHModel;
         setting::Union{INARCHEstimationSetting, Nothing} = INARCHEstimationSetting(),
-        temporal_info::TemporalInfo = TemporalInfo())
+        temporal_info::TemporalInfo = TemporalInfo()
+    )
     if isnothing(setting)
         setting = INARCHEstimationSetting()
     end
-    inits = [mean(x)/2; fill(0.5 ./ model.p, model.p); ifelse(model.nb, 3.0, zeros(0)); zeros(model.k*2)]
+    inits = [mean(x) / 2; fill(0.5 ./ model.p, model.p); ifelse(model.nb, 3.0, zeros(0)); zeros(model.k * 2)]
     optRaw = optimize(vars -> inarchTF(vars, x, model), inits)
     par = inarchTF(optRaw.minimizer, x, model, true)
 
-    INARCHFitted(x, model, par, setting, temporal_info)
+    return INARCHFitted(x, model, par, setting, temporal_info)
 end
 
-function fit_baseline(x::Vector{T1},
-    model::INARCHModel;
-    setting::Union{INARCHEstimationSetting, Nothing} = INARCHEstimationSetting(),
-    temporal_info::TemporalInfo = TemporalInfo()) where {T1 <: Real}
+function fit_baseline(
+        x::Vector{T1},
+        model::INARCHModel;
+        setting::Union{INARCHEstimationSetting, Nothing} = INARCHEstimationSetting(),
+        temporal_info::TemporalInfo = TemporalInfo()
+    ) where {T1 <: Real}
     if isnothing(setting)
         setting = INARCHEstimationSetting()
     end
@@ -228,11 +234,11 @@ function fit_baseline(x::Vector{T1},
     else
         throw(ArgumentError("Time series must be integer."))
     end
-    inits = [mean(x)/2; fill(0.5 ./ model.p, model.p); ifelse(model.nb, 3.0, zeros(0)); zeros(model.k*2)]
+    inits = [mean(x) / 2; fill(0.5 ./ model.p, model.p); ifelse(model.nb, 3.0, zeros(0)); zeros(model.k * 2)]
     optRaw = optimize(vars -> inarchTF(vars, x, model), inits)
     par = inarchTF(optRaw.minimizer, x, model, true)
 
-    INARCHFitted(x, model, par, setting, temporal_info)
+    return INARCHFitted(x, model, par, setting, temporal_info)
 end
 
 """
@@ -256,8 +262,10 @@ where:
 - Use previous forecasts X̂_{T+h-i} for h > i
 - Seasonal component computed from fitted harmonics
 """
-function point_forecast(fitted::INARCHFitted,
-        horizon::Union{Vector{Int}, Int, UnitRange{Int}})
+function point_forecast(
+        fitted::INARCHFitted,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}}
+    )
     if horizon isa Int
         horizon = collect(1:horizon)
     end
@@ -267,7 +275,7 @@ function point_forecast(fitted::INARCHFitted,
 
     all(horizon .> 0) || throw(ArgumentError("Horizons must be non-negative."))
     length(horizon) .> 0 || throw(ArgumentError("Valid forecast horizons must be provided."))
-    
+
     x = fitted.x
     T = length(x)
     model = fitted.model
@@ -283,25 +291,25 @@ function point_forecast(fitted::INARCHFitted,
 
     hMax = maximum(horizon)
 
-    tSeq = (T+1-p:T+hMax) ./ s .* (2*π)
+    tSeq = ((T + 1 - p):(T + hMax)) ./ s .* (2 * π)
     seas = zeros(hMax + p)
     if s > 0
-        for kk = 1:k
+        for kk in 1:k
             ωk = kk .* tSeq
             seas .+= γ[kk] .* sin.(ωk)
             seas .+= γ[k + kk] .* cos.(ωk)
         end
     end
-    
+
     seas = exp.(seas)
-    xOld = x[end-p + 1:end] ./ seas[1:p]
-    seas = seas[p+1:end]
-    
+    xOld = x[(end - p + 1):end] ./ seas[1:p]
+    seas = seas[(p + 1):end]
+
     fc_point = zeros(hMax)
 
     for hh in 1:hMax
         fc_point[hh] = β0
-        for i = 1:p
+        for i in 1:p
             if hh - i <= 0
                 fc_point[hh] += xOld[p + hh - i] * α[i]
             else
@@ -311,7 +319,7 @@ function point_forecast(fitted::INARCHFitted,
 
         fc_point[hh] *= seas[hh]
     end
-    fc_point[horizon]
+    return fc_point[horizon]
 end
 
 """
@@ -343,12 +351,14 @@ Generate prediction intervals using INARCH trajectory simulation.
 # Note
 No ParametricInterval implementation available.
 """
-function interval_forecast(fitted::INARCHFitted,
+function interval_forecast(
+        fitted::INARCHFitted,
         method::ModelTrajectoryInterval,
         horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
         levels::Vector{Float64} = [0.95];
         alpha_precision::Int = 10,
-        include_median::Bool = true)
+        include_median::Bool = true
+    )
     #
     Random.seed!(method.seed)
 
@@ -358,7 +368,7 @@ function interval_forecast(fitted::INARCHFitted,
     if horizon isa UnitRange{Int}
         horizon = collect(horizon)
     end
-    
+
     # Validate input:
     all(0 .< levels .< 1.0) || throw(ArgumentError("Levels must be between 0 and 1"))
     all(horizon .> 0) || throw(ArgumentError("Horizons must be positive"))
@@ -371,7 +381,7 @@ function interval_forecast(fitted::INARCHFitted,
         levels = [levels; 0.0]
     end
     levels = sort(levels)
-    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l*0.5).(levels)...), digits = alpha_precision)))
+    alpha = sort(unique(round.(vcat((l -> 0.5 .+ [-1, 1] .* l * 0.5).(levels)...), digits = alpha_precision)))
 
     # New below this line
     x = fitted.x
@@ -391,24 +401,24 @@ function interval_forecast(fitted::INARCHFitted,
 
     trajectories = zeros(Int64, method.n_trajectories, hMax)
     trajectoriesScl = zeros(Float64, method.n_trajectories, hMax)
-    
-    tSeq = (T+1-p:T+hMax) ./ s .* (2*π)
+
+    tSeq = ((T + 1 - p):(T + hMax)) ./ s .* (2 * π)
     seas = zeros(hMax + p)
     if s > 0
-        for kk = 1:k
+        for kk in 1:k
             ωk = kk .* tSeq
             seas .+= γ[kk] .* sin.(ωk)
             seas .+= γ[k + kk] .* cos.(ωk)
         end
     end
-    
+
     seas = exp.(seas)
-    xOld = x[end-p + 1:end] ./ seas[1:p]
-    seas = seas[p+1:end]
+    xOld = x[(end - p + 1):end] ./ seas[1:p]
+    seas = seas[(p + 1):end]
 
     for hh in 1:hMax
         λ = fill(β0, method.n_trajectories)
-        for i = 1:p
+        for i in 1:p
             if hh - i <= 0
                 λ .+= xOld[p + hh - i] * α[i]
             else
@@ -418,7 +428,7 @@ function interval_forecast(fitted::INARCHFitted,
 
         λ .*= seas[hh]
 
-        λ[λ .> 1e16] .= trunc(Int64, 1e16)
+        λ[λ .> 1.0e16] .= trunc(Int64, 1.0e16)
 
         if nb
             pp = ϕ ./ (ϕ .+ λ)
@@ -435,18 +445,18 @@ function interval_forecast(fitted::INARCHFitted,
     Random.seed!(nothing)
 
     fc_intervals = Vector{ForecastInterval}(undef, length(horizon))
-    fc_median = include_median ? zeros(length(horizon)) : nothing 
+    fc_median = include_median ? zeros(length(horizon)) : nothing
 
     if include_median
         i_median = findfirst(alpha .== 0.5)
     end
 
-    for h = 1:length(horizon)
-        all_quantiles = [quantile(trajectories[:, h], q) for q = alpha]
+    for h in 1:length(horizon)
+        all_quantiles = [quantile(trajectories[:, h], q) for q in alpha]
         ls = reverse(all_quantiles[alpha .< 0.5])
         us = all_quantiles[alpha .> 0.5]
         fc_intervals[h] = ForecastInterval(ls, us, levels[levels .> 0])
-    
+
         if include_median
             fc_median[h] = all_quantiles[i_median]
         end
