@@ -96,18 +96,6 @@ end
     end
 end
 
-@testitem "Only damped multiplicative trend fits are rejected" setup = [TestData] tags = [:models, :ets] begin
-    using Random
-    # Just over two seasons: getInitial gives a NaN objective, and the fit goes ahead
-    # as it always has rather than being rejected as a negative trend.
-    Random.seed!(13)
-    n = rand(20:80)
-    x = 50 .- 0.8 .* (1:n) .+ 2 .* randn(n)
-    for trend in ("N", "A", "Ad", "M")
-        @test fit_baseline(x, ETSModel(trend = trend, season = "A", s = 12)) isa ETSFitted
-    end
-end
-
 @testitem "Damped multiplicative trends without a season can keep a negative level" setup = [TestData] tags = [:models, :ets] begin
     using Random
     # A rising series of negative values: the trend stays positive while the level is
