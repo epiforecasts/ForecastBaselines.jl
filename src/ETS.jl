@@ -729,36 +729,60 @@ function getInitial(x::Vector{T1}, model::ETSModel) where {T1 <: Real}
     T = length(x)
     if !(model.season isa NSeason)
         s = model.season.s
-        if length(x) > 2 * s
+        # The moving average over two seasons leaves T - 2s + 1 deviations, and each
+        # season needs at least one of them.
+        if length(x) - 2 * s + 1 >= s
             ff = (t -> mean(x[t:(t + 2 * s - 1)])).(1:(T - 2 * s + 1))
             tSeq = (1:(T - 2 * s + 1)) .+ s
             if model.season isa ASeason
                 xx = x[tSeq] .- ff
                 sRaw = (ss -> mean(xx[ss:s:length(xx)])).(1:s)
-                sNorm = sRaw ./ sum(sRaw)
+                # Additive seasonal effects sum to zero.
+                sNorm = sRaw .- mean(sRaw)
             else
                 xx = x[tSeq] ./ ff
                 sRaw = (ss -> mean(xx[ss:s:length(xx)])).(1:s)
-                sNorm = sRaw ./ sum(sRaw) .* s
+                # Multiplicative seasonal factors average one.
+                sNorm = sRaw ./ mean(sRaw)
             end
         else
+            # Too short to estimate a seasonal pattern: start from none.
             xx = x
-            sNorm = abs.(rand(Normal(), s)) ./ 10
+            sNorm = model.season isa ASeason ? zeros(s) : ones(s)
         end
+        # The filter uses S[end] for the first observation, S[end - 1] for the second
+        # and so on, so the seasons go in back to front.
+        sNorm = reverse(sNorm)
     else
         xx = x
         sNorm = [0.0]
     end
 
-    nxx = minimum([10, length(xx)])
-    yy = xx[1:nxx]
+    # The level and trend describe the series with the season taken out, not the
+    # deviations from the moving average that the seasonal states come from.
+    if model.season isa NSeason
+        adjusted = x
+    else
+        season_of_t = reverse(sNorm)[mod1.(1:T, model.season.s)]
+        adjusted = model.season isa ASeason ? x .- season_of_t : x ./ season_of_t
+    end
+    nxx = minimum([10, length(adjusted)])
+    yy = adjusted[1:nxx]
     X = [ones(nxx) collect(1:nxx)]
     beta = inv(X'X) * X'yy
     l = beta[1]
     if model.trend isa ATrend || model.trend isa AdTrend
         b = beta[2]
     elseif model.trend isa MTrend || model.trend isa MdTrend
-        b = 1 + beta[2] / beta[1]
+        if all(yy .> 0)
+            # A growth factor is positive, so fit the line on the log scale; the
+            # level and factor then start positive.
+            log_beta = inv(X'X) * X' * log.(yy)
+            l = exp(log_beta[1])
+            b = exp(log_beta[2])
+        else
+            b = 1.0
+        end
     else
         b = 0.0
     end
@@ -778,13 +802,6 @@ function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64}) where {T
         max(0, -par.θ.β) + max(0, par.θ.β - par.θ.α) +
         max(0, -par.θ.γ) + max(0, par.θ.γ - (1 - par.θ.α)) +
         max(0, -par.θ.ϕ) + max(0, par.θ.ϕ - 1)
-    # A damped multiplicative trend is raised to the power phi, so its state has to stay
-    # positive, and a negative level drives it negative. getInitial can start either
-    # below zero; the penalty slopes back towards positive values.
-    damped_multiplicative = model.trend isa MdTrend
-    if damped_multiplicative
-        violation += max(0, -par.z0.L) + max(0, -par.z0.B)
-    end
     if violation > 0
         return 1.0e8 * (1 + violation)
     end
@@ -798,7 +815,7 @@ function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64}) where {T
     end
     # The filter only raises the states before the last to the power phi, but
     # point_forecast starts from the last one.
-    if damped_multiplicative && filtered.z[end].B < 0
+    if model.trend isa MdTrend && filtered.z[end].B < 0
         return 1.0e8 * (1 - filtered.z[end].B)
     end
     ϵ = filtered.ϵ
@@ -887,14 +904,6 @@ function fit_baseline(
     init = getInitial(x, model)
     initVec = ETSpar2θ(init, model)
     result = optimize(vars -> L_fun(x, model, vars), initVec)
-    # L_fun only returns 1e8 or more for infeasible parameters.
-    result.minimum < 1.0e8 || throw(
-        ArgumentError(
-            "The search from the starting values found no parameters that keep this " *
-                "ETS model's damped multiplicative trend positive; an undamped or " *
-                "additive trend may suit the series"
-        )
-    )
     estVec = result.minimizer
     return ETSFitted(x, model, ETSθ2par(estVec, model), setting, temporal_info)
 end

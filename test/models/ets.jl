@@ -66,32 +66,116 @@ end
     @test slope("A") < -2
 end
 
-@testitem "Damped multiplicative trends fit when the search turns the trend negative" setup = [TestData] tags = [:models, :ets] begin
-    # On this series the simplex passes through a negative trend state, which the damped
-    # multiplicative trend raises to the power ϕ.
+@testitem "Damped multiplicative trends fit the seasonal test series" setup = [TestData] tags = [:models, :ets] begin
+    # From the old starting values the search turned the trend negative here and the
+    # fit crashed.
     for error in ("A", "M")
         fitted = fit_baseline(seasonal_data, ETSModel(error = error, trend = "Md", season = "A", s = 12))
         @test all(isfinite, point_forecast(fitted, 1:6))
     end
 end
 
-@testitem "Damped multiplicative trends fit from a negative starting level or trend" setup = [TestData] tags = [:models, :ets] begin
+@testitem "Damped multiplicative trends fit a rising and a falling series" setup = [TestData] tags = [:models, :ets] begin
     using Random
-    # getInitial starts the trend below zero on the rising series and the level below
-    # zero on the falling one with a seasonal component.
+    # Both used to start with a negative trend or level and crash during the search.
     Random.seed!(1)
     rising = 2.0 .* (1:40) .- 1 .+ 0.1 .* randn(40)
     Random.seed!(7)
     falling = collect(300.0 .- 2.25 .* (1:60) .+ randn(60))
-    @test ForecastBaselines.getInitial(rising, ETSModel(trend = "Md")).z0.B < 0
-    @test ForecastBaselines.getInitial(falling, ETSModel(trend = "Md", season = "A", s = 12)).z0.L < 0
     for (name, x) in (("rising", rising), ("falling", falling)), error in ("A", "M"), season in ("N", "A")
         model = ETSModel(error = error, trend = "Md", season = season, s = 12)
         @testset "$name,$error,Md,$season" begin
             fitted = fit_baseline(x, model)
-            @test fitted.par.z0.L > 0
+            season == "A" && @test fitted.par.z0.L > 0
             @test fitted.par.z0.B > 0
             @test all(isfinite, point_forecast(fitted, 1:3))
         end
     end
+end
+
+@testitem "Damped multiplicative trends can keep a negative level" setup = [TestData] tags = [:models, :ets] begin
+    using Random
+    # A rising series of negative values: the trend stays positive while the level is
+    # negative, so the fit should follow the rise rather than flatten out.
+    Random.seed!(1)
+    x = -50 .+ 0.5 .* (1:60) .+ randn(60)
+    for error in ("A", "M"), season in ("N", "A")
+        fitted = fit_baseline(x, ETSModel(error = error, trend = "Md", season = season, s = 12))
+        @testset "$error,Md,$season" begin
+            @test fitted.par.z0.L < 0
+            # The data rise by 0.5 a step, about 6 a year; a seasonal forecast moves
+            # within the year, so compare yearly averages.
+            fc = point_forecast(fitted, 1:24)
+            @test sum(fc[13:24]) / 12 - sum(fc[1:12]) / 12 > 2
+        end
+    end
+end
+
+@testitem "Damped multiplicative trends forecast from a positive final trend" setup = [TestData] tags = [:models, :ets] begin
+    using Random
+    # A peaked series: the parameters that fit it best end with a negative trend state,
+    # which point_forecast would raise to the power ϕ.
+    for seed in (4, 5, 9)
+        Random.seed!(seed)
+        x = collect(100 .* exp.(-((1:60) .- 30) .^ 2 ./ 100) .+ 1 .+ randn(60))
+        fitted = fit_baseline(x, ETSModel(error = "A", trend = "Md"))
+        @test all(isfinite, point_forecast(fitted, 1:6))
+    end
+end
+
+@testitem "ETS starts additive seasonal effects that sum to zero" setup = [TestData] tags = [:models, :ets] begin
+    for x in (seasonal_data, seasonal_data .- 10)
+        S = ForecastBaselines.getInitial(x, ETSModel(season = "A", s = 12)).z0.S
+        @test sum(S) ≈ 0 atol = 1.0e-10
+        # The pattern keeps the amplitude of the data rather than being rescaled.
+        @test 1 < maximum(S) - minimum(S) < 8
+    end
+    S = ForecastBaselines.getInitial(seasonal_data, ETSModel(season = "M", s = 12)).z0.S
+    @test sum(S) / 12 ≈ 1
+end
+
+@testitem "ETS starting seasonal states line up with the first observations" setup = [TestData] tags = [:models, :ets] begin
+    pattern = 2 .* sin.(2π .* (1:12) ./ 12) .+ [0.0, 0.5, 0, 0, -0.5, 0, 0, 0, 0.3, 0, 0, 0]
+    x = [10 + pattern[mod1(t, 12)] for t in 1:72]
+    S = ForecastBaselines.getInitial(x, ETSModel(season = "A", s = 12)).z0.S
+    # S[end] is used for observation 1, S[end - 1] for observation 2, ...
+    @test reverse(S) ≈ pattern .- sum(pattern) / 12
+end
+
+@testitem "ETS starts the level of a seasonal model at the level of the data" setup = [TestData] tags = [:models, :ets] begin
+    using Random
+    Random.seed!(7)
+    falling = collect(300.0 .- 2.25 .* (1:60) .+ randn(60))
+    for season in ("A", "M")
+        z0 = ForecastBaselines.getInitial(falling, ETSModel(trend = "A", season = season, s = 12)).z0
+        @test z0.L ≈ 300 rtol = 0.05
+        @test z0.B ≈ -2.25 rtol = 0.25
+    end
+end
+
+@testitem "ETS starts a multiplicative trend at a positive growth factor" setup = [TestData] tags = [:models, :ets] begin
+    using Random
+    Random.seed!(1)
+    rising = 2.0 .* (1:40) .- 1 .+ 0.1 .* randn(40)
+    growth = [5 * 1.05^t for t in 1:40]
+    for trend in ("M", "Md")
+        z0 = ForecastBaselines.getInitial(rising, ETSModel(trend = trend)).z0
+        @test z0.L > 0
+        @test z0.B > 1
+        z0 = ForecastBaselines.getInitial(growth, ETSModel(trend = trend)).z0
+        @test z0.L ≈ 5
+        @test z0.B ≈ 1.05
+    end
+end
+
+@testitem "ETS starts a short seasonal series from no seasonal pattern" setup = [TestData] tags = [:models, :ets] begin
+    # Two seasons and a half leave too few deviations from the moving average to
+    # cover every season.
+    @test all(isfinite, ForecastBaselines.getInitial(seasonal_data[1:30], ETSModel(season = "A", s = 12)).z0.S)
+    x = seasonal_data[1:20]
+    @test ForecastBaselines.getInitial(x, ETSModel(season = "A", s = 12)).z0.S == zeros(12)
+    @test ForecastBaselines.getInitial(x, ETSModel(season = "M", s = 12)).z0.S == ones(12)
+    # Without random starting values, repeated fits agree.
+    fit() = point_forecast(fit_baseline(x, ETSModel(season = "A", s = 12)), 1:3)
+    @test isequal(fit(), fit())
 end
