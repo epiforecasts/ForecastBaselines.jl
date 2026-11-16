@@ -755,8 +755,16 @@ function getInitial(x::Vector{T1}, model::ETSModel) where {T1 <: Real}
         sNorm = [0.0]
     end
 
-    nxx = minimum([10, length(xx)])
-    yy = xx[1:nxx]
+    # The level and trend describe the series with the season taken out, not the
+    # deviations from the moving average that the seasonal states come from.
+    if model.season isa NSeason
+        adjusted = x
+    else
+        season_of_t = reverse(sNorm)[mod1.(1:T, model.season.s)]
+        adjusted = model.season isa ASeason ? x .- season_of_t : x ./ season_of_t
+    end
+    nxx = minimum([10, length(adjusted)])
+    yy = adjusted[1:nxx]
     X = [ones(nxx) collect(1:nxx)]
     beta = inv(X'X) * X'yy
     l = beta[1]

@@ -127,3 +127,14 @@ end
     # S[end] is used for observation 1, S[end - 1] for observation 2, ...
     @test reverse(S) ≈ pattern .- sum(pattern) / 12
 end
+
+@testitem "ETS starts the level of a seasonal model at the level of the data" setup = [TestData] tags = [:models, :ets] begin
+    using Random
+    Random.seed!(7)
+    falling = collect(300.0 .- 2.25 .* (1:60) .+ randn(60))
+    for season in ("A", "M")
+        z0 = ForecastBaselines.getInitial(falling, ETSModel(trend = "A", season = season, s = 12)).z0
+        @test z0.L ≈ 300 rtol = 0.05
+        @test z0.B ≈ -2.25 rtol = 0.25
+    end
+end
