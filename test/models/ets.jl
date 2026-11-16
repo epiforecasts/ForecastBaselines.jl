@@ -74,3 +74,28 @@ end
         @test all(isfinite, point_forecast(fitted, 1:6))
     end
 end
+
+@testitem "A multiplicative trend fit either forecasts or fails at fitting" setup = [TestData] tags = [:models, :ets] begin
+    using Random
+    # The regression getInitial uses has a negative intercept here, so the trend state
+    # starts negative.
+    Random.seed!(1)
+    x = 2.0 .* (1:40) .- 1 .+ 0.1 .* randn(40)
+    @test ForecastBaselines.getInitial(x, ETSModel(trend = "Md")).z0.B < 0
+    for error in ("A", "M"), trend in ("M", "Md")
+        model = ETSModel(error = error, trend = trend)
+        fitted = try
+            fit_baseline(x, model)
+        catch err
+            err
+        end
+        @testset "$error,$trend" begin
+            if fitted isa Exception
+                @test fitted isa ArgumentError
+            else
+                @test fitted.par.z0.B > 0
+                @test all(isfinite, point_forecast(fitted, 1:3))
+            end
+        end
+    end
+end
