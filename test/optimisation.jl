@@ -93,3 +93,13 @@ end
     @test has_converged(refit)
     @test refit.par.θ.α ≈ fit_baseline(shorter, model).par.θ.α atol = 0.05
 end
+
+@testitem "Default ETS refits ignore the earlier fit" setup = [TestData] tags = [:optimisation] begin
+    model = ETSModel(error = "A", trend = "A")
+    full = fit_baseline(trend_data, model)
+    shorter = trend_data[1:(end - 5)]
+    refit = ForecastBaselines.refit_baseline(full, shorter)
+    default = fit_baseline(shorter, model)
+    @test refit.par.θ.α == default.par.θ.α
+    @test refit.par.θ.β == default.par.θ.β
+end
