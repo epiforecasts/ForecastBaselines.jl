@@ -827,8 +827,8 @@ end
     ETSEstimationSetting(; extended_search = false)
 
 Settings for the ETS fit. With `extended_search = true` the smoothing parameters are
-estimated on a logistic scale with Nelder-Mead, then L-BFGS, and a second starting point
-where Nelder-Mead has not converged (see `fit_baseline`). The default is a single
+estimated on a logistic scale with Nelder-Mead, followed by L-BFGS and a second starting
+point if Nelder-Mead has not converged (see `fit_baseline`). The default is a single
 Nelder-Mead run on the original scale.
 """
 struct ETSEstimationSetting <: AbstractEstimationSetting
@@ -869,7 +869,7 @@ end
 
 # Nelder-Mead needs no gradients, which the penalised regions of the objective (states
 # that leave their domain) would corrupt, and it gets near an optimum. Where it has
-# converged the search stops, so those fits cost what they always did. Otherwise L-BFGS
+# converged the search stops and the fit costs what it always did. Otherwise L-BFGS
 # continues from there, where the objective is smooth.
 function optimise_ets(objective, u0::Vector{Float64})
     start = optimize(objective, u0, NelderMead())
