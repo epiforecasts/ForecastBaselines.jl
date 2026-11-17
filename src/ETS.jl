@@ -946,7 +946,10 @@ Fit ETS model using maximum likelihood estimation.
 # Estimation Method
 1. Generate initial parameter values using `getInitial`
 2. Map the smoothing parameters to an unconstrained scale with logistic transforms
-3. Optimise the concentrated log-likelihood using L-BFGS
+3. Optimise the concentrated log-likelihood with Nelder-Mead followed by L-BFGS (finite-difference gradients), falling back to the Nelder-Mead result if L-BFGS fails
+4. Repeat step 3 from a second starting point with alpha = 0.9, since the likelihood is often bimodal in alpha, and keep the fit with the lower objective
+
+`has_converged` and the iteration count describe only the final stage (L-BFGS, or Nelder-Mead after a fallback) of the winning run, not the whole procedure.
 
 # Example
 ```julia
