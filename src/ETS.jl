@@ -826,6 +826,73 @@ end
 struct ETSEstimationSetting <: AbstractEstimationSetting
 end
 
+logit(p) = log(p / (1 - p))
+logistic(u) = 1 / (1 + exp(-u))
+
+# The smoothing parameters sit at the front of the parameter vector in the order alpha,
+# beta (trend), gamma (season), phi (damped trend). They are admissible when
+# 0 < alpha < 1, 0 < beta < alpha, 0 < gamma < 1 - alpha and 0 < phi < 1, so each is
+# written as a logistic fraction of the room the earlier ones leave. On that scale the
+# optimiser never meets a boundary, and the objective is smooth everywhere.
+is_damped(model::ETSModel) = model.trend isa Union{AdTrend, MdTrend}
+
+# A starting value on or outside a bound is moved just inside it.
+function smoothing_to_unconstrained(θ::Vector{Float64}, model::ETSModel)
+    inside(p) = clamp(p, 1.0e-3, 1 - 1.0e-3)
+    u = copy(θ)
+    α = inside(θ[1])
+    u[1] = logit(α)
+    i = 2
+    if !(model.trend isa NTrend)
+        u[i] = logit(inside(θ[i] / α))
+        i += 1
+    end
+    if !(model.season isa NSeason)
+        u[i] = logit(inside(θ[i] / (1 - α)))
+        i += 1
+    end
+    if is_damped(model)
+        u[i] = logit(inside(θ[i]))
+    end
+    return u
+end
+
+# Nelder-Mead gets near an optimum without gradients, which the penalised regions of
+# the objective (states that leave their domain) would corrupt. L-BFGS then converges
+# from there, where the objective is smooth.
+function optimise_ets(objective, u0::Vector{Float64})
+    start = optimize(objective, u0, NelderMead())
+    result = try
+        optimize(objective, start.minimizer, LBFGS())
+    catch err
+        # The line search can step across a penalised region and fail.
+        err isa AssertionError || rethrow()
+        start
+    end
+    return best_of(result, start)
+end
+
+best_of(a, b) = Optim.minimum(a) <= Optim.minimum(b) ? a : b
+
+function smoothing_from_unconstrained(u::Vector{Float64}, model::ETSModel)
+    θ = copy(u)
+    α = logistic(u[1])
+    θ[1] = α
+    i = 2
+    if !(model.trend isa NTrend)
+        θ[i] = α * logistic(u[i])
+        i += 1
+    end
+    if !(model.season isa NSeason)
+        θ[i] = (1 - α) * logistic(u[i])
+        i += 1
+    end
+    if is_damped(model)
+        θ[i] = logistic(u[i])
+    end
+    return θ
+end
+
 """
     ETSFitted
 
@@ -878,9 +945,8 @@ Fit ETS model using maximum likelihood estimation.
 
 # Estimation Method
 1. Generate initial parameter values using `getInitial`
-2. Optimise concentrated log-likelihood using L-BFGS
-3. Likelihood includes both fit and smoothness penalties
-4. Automatic constraint handling for parameter bounds
+2. Map the smoothing parameters to an unconstrained scale with logistic transforms
+3. Optimise the concentrated log-likelihood using L-BFGS
 
 # Example
 ```julia
@@ -905,8 +971,15 @@ function fit_baseline(
     end
     init = getInitial(x, model)
     initVec = ETSpar2θ(init, model)
-    result = optimize(vars -> L_fun(x, model, vars), initVec)
-    estVec = result.minimizer
+    objective = u -> L_fun(x, model, smoothing_from_unconstrained(u, model))
+    u0 = smoothing_to_unconstrained(initVec, model)
+    # The likelihood is often multimodal in the smoothing parameters, with one local
+    # optimum at small values and another near a random walk (alpha close to one), so
+    # the fit also starts from a large alpha and keeps the better.
+    u1 = copy(u0)
+    u1[1] = logit(0.9)
+    result = best_of(optimise_ets(objective, u0), optimise_ets(objective, u1))
+    estVec = smoothing_from_unconstrained(result.minimizer, model)
     return ETSFitted(
         x, model, ETSθ2par(estVec, model), setting, temporal_info, optimisation_info(result, "ETS")
     )

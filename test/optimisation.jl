@@ -48,3 +48,31 @@ end
         fit_baseline(stationary_data, ARMAModel(p = 3, q = 3))
     end
 end
+
+@testitem "ETS smoothing parameters map to and from an unconstrained scale" tags = [:optimisation] begin
+    using ForecastBaselines: smoothing_to_unconstrained, smoothing_from_unconstrained
+    for model in (
+            ETSModel(), ETSModel(error = "A", trend = "A"), ETSModel(error = "M", trend = "Ad"),
+            ETSModel(season = "A", s = 4), ETSModel(error = "M", trend = "Md", season = "M", s = 4),
+        )
+        k = 1 + !(model.trend isa ForecastBaselines.NTrend) + !(model.season isa ForecastBaselines.NSeason) +
+            (model.trend isa Union{ForecastBaselines.AdTrend, ForecastBaselines.MdTrend})
+        # Values with beta < alpha, gamma < 1 - alpha and phi < 1 survive a round trip.
+        θ = [[0.4, 0.2, 0.3, 0.8][1:k]; 5.0; 1.0]
+        back = smoothing_from_unconstrained(smoothing_to_unconstrained(θ, model), model)
+        @test back ≈ θ
+        # Any point on the unconstrained scale is admissible.
+        for u in ([-30.0, 30.0, -5.0, 8.0], [30.0, 30.0, 30.0, 30.0])
+            v = smoothing_from_unconstrained([u[1:k]; zeros(2)], model)
+            α = v[1]
+            @test 0 <= α <= 1
+            if !(model.trend isa ForecastBaselines.NTrend)
+                @test 0 <= v[2] <= α
+            end
+            if !(model.season isa ForecastBaselines.NSeason)
+                γ = v[model.trend isa ForecastBaselines.NTrend ? 2 : 3]
+                @test 0 <= γ <= 1 - α
+            end
+        end
+    end
+end
