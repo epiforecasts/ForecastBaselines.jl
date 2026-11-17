@@ -1013,8 +1013,8 @@ function fit_baseline(
     )
 end
 
-# With the extended search, the parameters of the fit to the full series are close to the optimum for a
-# shorter stretch. The default search keeps starting from getInitial, so its results do not change.
+# With the extended search, the parameters of the fit to the full series lie close to the optimum for a
+# shorter series. The default search still starts from getInitial and gives the same results as before.
 function refit_baseline(fitted::ETSFitted, x)
     start = fitted.estimation_setting.extended_search ? fitted.par : nothing
     return fit_baseline(x, fitted.model, setting = fitted.estimation_setting, start = start)
