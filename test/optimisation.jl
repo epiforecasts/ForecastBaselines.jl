@@ -1,7 +1,7 @@
 @testitem "Fits report whether the optimiser converged" setup = [TestData] tags = [:optimisation] begin
     using ForecastBaselines: OptimisationInfo
     # Nelder-Mead reaches its iteration limit on this damped-trend seasonal fit but
-    # converges on simple exponential smoothing, ARMA(1,1) and INARCH(1).
+    # converges for simple exponential smoothing, ARMA(1,1) and INARCH(1).
     holt_winters = fit_baseline(seasonal_data, ETSModel(error = "A", trend = "Ad", season = "A", s = 12))
     @test has_converged(holt_winters) === false
     @test holt_winters.optimisation.iterations == 1000
