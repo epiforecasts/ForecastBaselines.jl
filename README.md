@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/epiforecasts/ForecastBaselines.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/epiforecasts/ForecastBaselines.jl/actions/workflows/CI.yml)
 [![codecov](https://codecov.io/gh/epiforecasts/ForecastBaselines.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/epiforecasts/ForecastBaselines.jl)
+[![Docs: stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://epiforecasts.github.io/ForecastBaselines.jl/stable/)
+[![Docs: dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://epiforecasts.github.io/ForecastBaselines.jl/dev/)
 
 A comprehensive Julia package for baseline forecasting methods.
 
@@ -546,15 +548,7 @@ fc = forecast(fitted, horizon=1:14)
 
 ## Documentation
 
-Documentation is available through Julia's help system:
-
-```julia
-?ARMAModel
-?forecast
-?score
-```
-
-(More details to be added)
+The [documentation](https://epiforecasts.github.io/ForecastBaselines.jl/dev/) has a getting-started guide, a description of each model and a reference for every exported function and type. Within Julia, `?ARMAModel` shows the docstring of any of them.
 
 ## Contributing
 
