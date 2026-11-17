@@ -829,11 +829,11 @@ end
 logit(p) = log(p / (1 - p))
 logistic(u) = 1 / (1 + exp(-u))
 
-# The smoothing parameters sit at the front of the parameter vector in the order alpha,
+# The smoothing parameters come first in the parameter vector, in the order alpha,
 # beta (trend), gamma (season), phi (damped trend). They are admissible when
-# 0 < alpha < 1, 0 < beta < alpha, 0 < gamma < 1 - alpha and 0 < phi < 1, so each is
-# written as a logistic fraction of the room the earlier ones leave. On that scale the
-# optimiser never meets a boundary, and the objective is smooth everywhere.
+# 0 < alpha < 1, 0 < beta < alpha, 0 < gamma < 1 - alpha and 0 < phi < 1. Each is
+# therefore a logistic fraction of the room left by the earlier ones. On this scale the
+# optimiser never meets a boundary and the objective is smooth everywhere.
 is_damped(model::ETSModel) = model.trend isa Union{AdTrend, MdTrend}
 
 # A starting value on or outside a bound is moved just inside it.
@@ -857,15 +857,15 @@ function smoothing_to_unconstrained(θ::Vector{Float64}, model::ETSModel)
     return u
 end
 
-# Nelder-Mead gets near an optimum without gradients, which the penalised regions of
-# the objective (states that leave their domain) would corrupt. L-BFGS then converges
-# from there, where the objective is smooth.
+# Nelder-Mead needs no gradients, which the penalised regions of the objective (states
+# that leave their domain) would corrupt, and it gets near an optimum. L-BFGS then
+# converges from there, where the objective is smooth.
 function optimise_ets(objective, u0::Vector{Float64})
     start = optimize(objective, u0, NelderMead())
     result = try
         optimize(objective, start.minimizer, LBFGS())
     catch err
-        # The line search can step across a penalised region and fail.
+        # The line search can step across a penalised region and then fail.
         err isa AssertionError || rethrow()
         start
     end
@@ -973,9 +973,9 @@ function fit_baseline(
     initVec = ETSpar2θ(init, model)
     objective = u -> L_fun(x, model, smoothing_from_unconstrained(u, model))
     u0 = smoothing_to_unconstrained(initVec, model)
-    # The likelihood is often multimodal in the smoothing parameters, with one local
-    # optimum at small values and another near a random walk (alpha close to one), so
-    # the fit also starts from a large alpha and keeps the better.
+    # The likelihood is often multimodal in the smoothing parameters: one local optimum
+    # lies at small values and another near a random walk (alpha close to one). The fit
+    # therefore also starts from a large alpha and keeps the better result.
     u1 = copy(u0)
     u1[1] = logit(0.9)
     result = best_of(optimise_ets(objective, u0), optimise_ets(objective, u1))
