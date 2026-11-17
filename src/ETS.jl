@@ -823,8 +823,18 @@ function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64}) where {T
     return length(x) * log(sum(ϵ .^ 2)) + 2 * sum(log.(abs.(rr)))
 end
 
+"""
+    ETSEstimationSetting(; extended_search = false)
+
+Settings for the ETS fit. With `extended_search = true` the smoothing parameters are
+estimated on a logistic scale with Nelder-Mead, then L-BFGS, and a second starting point
+where Nelder-Mead has not converged (see `fit_baseline`). The default is a single
+Nelder-Mead run on the original scale.
+"""
 struct ETSEstimationSetting <: AbstractEstimationSetting
+    extended_search::Bool
 end
+ETSEstimationSetting(; extended_search::Bool = false) = ETSEstimationSetting(extended_search)
 
 logit(p) = log(p / (1 - p))
 logistic(u) = 1 / (1 + exp(-u))
@@ -858,10 +868,12 @@ function smoothing_to_unconstrained(θ::Vector{Float64}, model::ETSModel)
 end
 
 # Nelder-Mead needs no gradients, which the penalised regions of the objective (states
-# that leave their domain) would corrupt, and it gets near an optimum. L-BFGS then
-# converges from there, where the objective is smooth.
+# that leave their domain) would corrupt, and it gets near an optimum. Where it has
+# converged the search stops, so those fits cost what they always did. Otherwise L-BFGS
+# continues from there, where the objective is smooth.
 function optimise_ets(objective, u0::Vector{Float64})
     start = optimize(objective, u0, NelderMead())
+    Optim.converged(start) && return start
     result = try
         optimize(objective, start.minimizer, LBFGS())
     catch err
@@ -930,26 +942,30 @@ end
 """
     fit_baseline(x::Vector{Float64}, model::ETSModel;
                 setting::Union{ETSEstimationSetting, Nothing} = ETSEstimationSetting(),
-                temporal_info::TemporalInfo = TemporalInfo()) -> ETSFitted
+                temporal_info::TemporalInfo = TemporalInfo(),
+                start::Union{ETSParameter, Nothing} = nothing) -> ETSFitted
 
 Fit ETS model using maximum likelihood estimation.
 
 # Arguments
 - `x::Vector{Float64}`: Time series data
 - `model::ETSModel`: ETS model specification
-- `setting`: Estimation settings (optional)
+- `setting`: Estimation settings (optional); see `ETSEstimationSetting`
 - `temporal_info`: Temporal metadata (optional)
+- `start`: Parameters to start the optimisation from (optional)
 
 # Returns
 - `ETSFitted`: Fitted model with estimated parameters
 
 # Estimation Method
+By default the fit is a single Nelder-Mead run on the original parameter scale from the initial values of `getInitial`. With `ETSEstimationSetting(extended_search = true)`:
+
 1. Generate initial parameter values using `getInitial`
 2. Map the smoothing parameters to an unconstrained scale with logistic transforms
-3. Optimise the concentrated log-likelihood with Nelder-Mead followed by L-BFGS (finite-difference gradients), falling back to the Nelder-Mead result if L-BFGS fails
-4. Repeat step 3 from a second starting point with alpha = 0.9, because the likelihood is often bimodal in alpha. Keep the fit with the lower objective
+3. Optimise the concentrated log-likelihood with Nelder-Mead. If it has not converged, continue with L-BFGS (finite-difference gradients), falling back to the Nelder-Mead result if L-BFGS fails
+4. If the fit has still not converged, repeat step 3 from a second starting point with alpha = 0.9, because the likelihood is often bimodal in alpha. Keep the fit with the lower objective
 
-`has_converged` and the iteration count describe only the final stage (L-BFGS, or Nelder-Mead after a fallback) of the winning run.
+`start` replaces the initial values of step 1 with the parameters of an earlier fit, for example of the same model to a longer series. `has_converged` and the iteration count describe only the final stage of the winning run.
 
 # Example
 ```julia
@@ -967,26 +983,38 @@ function fit_baseline(
         x::Vector{T1},
         model::ETSModel;
         setting::Union{ETSEstimationSetting, Nothing} = ETSEstimationSetting(),
-        temporal_info::TemporalInfo = TemporalInfo()
+        temporal_info::TemporalInfo = TemporalInfo(),
+        start::Union{ETSParameter, Nothing} = nothing
     ) where {T1 <: Real}
     if isnothing(setting)
         setting = ETSEstimationSetting()
     end
-    init = getInitial(x, model)
+    init = isnothing(start) ? getInitial(x, model) : start
     initVec = ETSpar2θ(init, model)
-    objective = u -> L_fun(x, model, smoothing_from_unconstrained(u, model))
-    u0 = smoothing_to_unconstrained(initVec, model)
-    # The likelihood is often multimodal in the smoothing parameters: one local optimum
-    # lies at small values and another near a random walk (alpha close to one). The fit
-    # therefore also starts from a large alpha and keeps the better result.
-    u1 = copy(u0)
-    u1[1] = logit(0.9)
-    result = best_of(optimise_ets(objective, u0), optimise_ets(objective, u1))
-    estVec = smoothing_from_unconstrained(result.minimizer, model)
+    if !setting.extended_search
+        result = optimize(vars -> L_fun(x, model, vars), initVec)
+        estVec = result.minimizer
+    else
+        objective = u -> L_fun(x, model, smoothing_from_unconstrained(u, model))
+        u0 = smoothing_to_unconstrained(initVec, model)
+        result = optimise_ets(objective, u0)
+        if !Optim.converged(result)
+            # The likelihood is often multimodal in the smoothing parameters: one local optimum
+            # lies at small values and another near a random walk (alpha close to one). An
+            # unconverged fit therefore also starts from a large alpha and keeps the better result.
+            u1 = copy(u0)
+            u1[1] = logit(0.9)
+            result = best_of(result, optimise_ets(objective, u1))
+        end
+        estVec = smoothing_from_unconstrained(result.minimizer, model)
+    end
     return ETSFitted(
         x, model, ETSθ2par(estVec, model), setting, temporal_info, optimisation_info(result, "ETS")
     )
 end
+
+# The parameters of the fit to the full series are close to the optimum for a shorter stretch.
+refit_baseline(fitted::ETSFitted, x) = fit_baseline(x, fitted.model, setting = fitted.estimation_setting, start = fitted.par)
 
 has_converged(fitted::ETSFitted) = isnothing(fitted.optimisation) ? nothing : fitted.optimisation.converged
 
