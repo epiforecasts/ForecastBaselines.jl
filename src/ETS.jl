@@ -823,11 +823,11 @@ function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64}) where {T
     return length(x) * log(sum(ϵ .^ 2)) + 2 * sum(log.(abs.(rr)))
 end
 
-# A multiplicative trend is a growth factor, so the model is only defined for a
-# positive one: the next step raises it to the power phi. A simulated shock can push
-# it below zero. The fitted trend is kept positive by the penalty in L_fun; here the
-# path is held at a vanishing positive factor, so that it keeps decaying towards zero
-# instead of leaving the support of the model.
+# A multiplicative trend is a growth factor and must be positive, because the next
+# step raises it to the power phi. A simulated shock can push it below zero. The
+# penalty in L_fun keeps the fitted trend positive. Simulated paths are instead held
+# at a vanishing positive factor, which keeps them decaying towards zero within the
+# support of the model.
 keep_trend_positive(z::ETSSpace, ::ETSModel) = z
 function keep_trend_positive(z::ETSSpace, ::ETSModel{<:ErrorType, MdTrend})
     return z.B > 0 ? z : ETSSpace(z.L, eps(), z.S)
