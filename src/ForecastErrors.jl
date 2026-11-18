@@ -431,13 +431,17 @@ abstract type AbstractIntervalError <: AbstractError end
 """
     CoverageError(;correct_level::Bool = true)
 
-Coverage indicator for prediction intervals.
+Miss indicator for prediction intervals, used to assess their calibration.
+
+For each interval, the error is 1 if the observation falls outside it and 0 if it falls
+inside. With `correct_level = true` the nominal miss rate, one minus the interval's level,
+is subtracted, so the error averages to zero over well-calibrated intervals, is positive
+when intervals miss more often than their level implies (too narrow) and negative when
+they miss less often (too wide).
 
 # Fields
-- `correct_level::Bool`: If true, subtract nominal coverage from empirical coverage
-
-Returns whether observation falls within prediction interval(s).
-Used for interval calibration assessment.
+- `correct_level::Bool`: If true, subtract the nominal miss rate `1 - level` from the
+  miss indicator.
 """
 struct CoverageError <: AbstractIntervalError
     correct_level::Bool
