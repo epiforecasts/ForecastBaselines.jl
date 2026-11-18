@@ -180,7 +180,7 @@ end
     @test isequal(fit(), fit())
 end
 
-@testitem "Simulated damped multiplicative trends stay on the model's support" setup = [TestData] tags = [:models, :ets] begin
+@testitem "Simulated damped multiplicative trends that turn negative throw an informative error" setup = [TestData] tags = [:models, :ets] begin
     using Random
     # Noisy data with a large trend smoothing parameter: the simulated trend state is
     # pushed below zero on some paths, where B^ϕ is undefined.
@@ -193,8 +193,17 @@ end
     )
     fitted = ForecastBaselines.ETSFitted(x, model, par, ForecastBaselines.ETSEstimationSetting())
     method = ModelTrajectoryInterval(n_trajectories = 2000, return_trajectories = true)
-    _, _, intervals, trajectories = interval_forecast(fitted, method, 1:12, [0.5, 0.9])
-    @test size(trajectories) == (2000, 12)
+    @test_throws ArgumentError interval_forecast(fitted, method, 1:12, [0.5, 0.9])
+end
+
+@testitem "A damped multiplicative trend fitted to a positive trending series simulates" setup = [TestData] tags = [:models, :ets] begin
+    using Random
+    Random.seed!(1)
+    x = [20 * 1.02^t * (1 + 0.01 * randn()) for t in 1:40]
+    fitted = fit_baseline(x, ETSModel(error = "A", trend = "Md"))
+    method = ModelTrajectoryInterval(n_trajectories = 500, return_trajectories = true)
+    _, _, intervals, trajectories = interval_forecast(fitted, method, 1:6, [0.5, 0.9])
+    @test size(trajectories) == (500, 6)
     @test all(isfinite, trajectories)
-    @test length(intervals) == 12
+    @test length(intervals) == 6
 end
