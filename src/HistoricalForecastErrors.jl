@@ -1,3 +1,6 @@
+# Models whose estimation can start from an earlier fit override this.
+refit_baseline(fitted::AbstractFittedModel, x) = fit_baseline(x, fitted.model, setting = fitted.estimation_setting)
+
 """
     historical_forecast_errors(fitted::AbstractFittedModel,
                                horizon::Union{Vector{Int}, Int, UnitRange{Int}},
@@ -76,7 +79,7 @@ function historical_forecast_errors(
             # These refits are internal; whether each converged is not the user's
             # concern, and its warning would be mistaken for one about their own fit.
             newFit = Logging.with_logger(Logging.NullLogger()) do
-                fit_baseline(xx, fitted.model, setting = fitted.estimation_setting)
+                refit_baseline(fitted, xx)
             end
         catch e
             # @warn "Estimation failed at tEnd = $tEnd: $e"
