@@ -882,7 +882,7 @@ end
 
 # A multiplicative trend is a growth factor and must be positive, because the next
 # step raises it to the power phi. A simulated shock can push it to zero or below, or
-# make it NaN. Clamping it would give finite but meaningless paths, so we throw an error.
+# to NaN. Clamping it would give finite but meaningless paths, so we throw an error.
 check_trend_positive(z::ETSSpace, ::ETSModel) = z
 function check_trend_positive(z::ETSSpace, ::ETSModel{<:ErrorType, MdTrend})
     z.B > 0 && return z
@@ -1078,7 +1078,7 @@ Generate prediction intervals using ETS model trajectories.
 - **Additive errors**: x_t = w(z_{t-1}) + ϵ_t
 - **Multiplicative errors**: x_t = w(z_{t-1})(1 + ϵ_t)
 
-Simulation with a damped multiplicative trend throws an `ArgumentError` if the noise pushes the growth factor to zero or below. Consider a damped additive trend.
+Simulation with a damped multiplicative trend throws an `ArgumentError` if the noise pushes the growth factor to zero or below. A damped additive trend avoids this.
 
 # Example
 ```julia
@@ -1159,7 +1159,7 @@ function interval_forecast(
             end
             trajectories[i, hh] = w_function(zCurr, fitted.model, fitted.par.θ) + r_function(zCurr, fitted.model, fitted.par.θ) * ϵ[hh]
             zCurr = f_function(zCurr, fitted.model, fitted.par.θ) + g_function(zCurr, fitted.model, fitted.par.θ) * ϵ[hh]
-            # The state after the last step is never used, so only check before a further step.
+            # Check only before a further step; the state after the last step is never used.
             hh < hMax && (zCurr = check_trend_positive(zCurr, fitted.model))
 
             if method.positivity_correction == :zero_floor
