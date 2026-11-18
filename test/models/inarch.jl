@@ -49,3 +49,26 @@ end
     )
     @test fc_point ≈ expected
 end
+
+@testitem "Seasonal INARCH point forecasts follow the conditional mean recursion" tags = [:models, :inarch] begin
+    using ForecastBaselines: INARCHParameter, INARCHEstimationSetting
+    # λ_t = μ_t (β₀ + α z_{t-1}), where z_t is the observation divided by μ_t up to T
+    # and the forecast divided by μ_t after it.
+    p, s = 1, 12
+    β0, α, γ = 5.0, [0.6], [0.8, 0.3]
+    x = fill(20, 48)
+    T = length(x)
+    μ(t) = exp(γ[1] * sin(2π * t / s) + γ[2] * cos(2π * t / s))
+    model = INARCHModel(p = p, s = s, k = 1)
+    fitted = INARCHFitted(x, model, INARCHParameter(β0, α, 1.0, γ), INARCHEstimationSetting(), TemporalInfo())
+
+    z = Dict(t => x[t] / μ(t) for t in 1:T)
+    expected = Float64[]
+    for h in 1:6
+        t = T + h
+        λ = μ(t) * (β0 + α[1] * z[t - 1])
+        z[t] = λ / μ(t)
+        push!(expected, λ)
+    end
+    @test point_forecast(fitted, 1:6) ≈ expected
+end

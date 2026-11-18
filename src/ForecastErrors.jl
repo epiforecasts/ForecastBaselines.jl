@@ -2,12 +2,25 @@
 # Prep for a scoring rule wrapper function
 # Split into point errors, interval errors and trajectory errors
 
+"""
+    AbstractError
+
+Supertype of the errors that compare a forecast with the observed value. Subtypes
+are grouped by what they compare: point forecasts ([`AbstractPointError`](@ref)),
+prediction intervals ([`AbstractIntervalError`](@ref)) or trajectories
+([`AbstractTrajectoryError`](@ref)).
+"""
 abstract type AbstractError end
 
 ####################
 ### Point errors ###
 ####################
 
+"""
+    AbstractPointError <: AbstractError
+
+Supertype of errors computed from a point forecast, such as [`AbsoluteError`](@ref).
+"""
 abstract type AbstractPointError <: AbstractError end
 
 """
@@ -426,6 +439,12 @@ end
 
 # Define error types for a target and truth value, where
 # the target is a forecast interval
+"""
+    AbstractIntervalError <: AbstractError
+
+Supertype of errors computed from prediction intervals, such as
+[`IntervalScore`](@ref).
+"""
 abstract type AbstractIntervalError <: AbstractError end
 
 """
@@ -690,6 +709,12 @@ end
 
 # Define error types for a target and truth value, where
 # the target is a forecast trajectory
+"""
+    AbstractTrajectoryError <: AbstractError
+
+Supertype of errors computed from sampled trajectories, such as
+[`CRPScore_trajectory`](@ref).
+"""
 abstract type AbstractTrajectoryError <: AbstractError end
 
 """

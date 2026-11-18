@@ -1,7 +1,32 @@
 # Supertype for different scoring rules
+"""
+    AbstractScoringRule
+
+Supertype of scoring rules, which summarise forecast errors over a set of forecasts
+with [`score`](@ref).
+"""
 abstract type AbstractScoringRule end
+
+"""
+    AbstractPointScoringRule <: AbstractScoringRule
+
+Supertype of scoring rules for point forecasts, such as [`PointScoringRule`](@ref).
+"""
 abstract type AbstractPointScoringRule <: AbstractScoringRule end
+
+"""
+    AbstractIntervalScoringRule <: AbstractScoringRule
+
+Supertype of scoring rules for prediction intervals, such as [`WIS`](@ref).
+"""
 abstract type AbstractIntervalScoringRule <: AbstractScoringRule end
+
+"""
+    AbstractTrajectoryScoringRule <: AbstractScoringRule
+
+Supertype of scoring rules for sampled trajectories, such as
+[`CRPS_trajectory`](@ref).
+"""
 abstract type AbstractTrajectoryScoringRule <: AbstractScoringRule end
 
 """
