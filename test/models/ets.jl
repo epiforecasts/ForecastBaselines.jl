@@ -179,3 +179,22 @@ end
     fit() = point_forecast(fit_baseline(x, ETSModel(season = "A", s = 12)), 1:3)
     @test isequal(fit(), fit())
 end
+
+@testitem "Simulated damped multiplicative trends stay on the model's support" setup = [TestData] tags = [:models, :ets] begin
+    using Random
+    # Noisy data with a large trend smoothing parameter: the simulated trend state is
+    # pushed below zero on some paths, where B^ϕ is undefined.
+    Random.seed!(2)
+    x = 10 .+ 5 .* randn(40)
+    model = ETSModel(error = "A", trend = "Md")
+    par = ForecastBaselines.ETSParameter(
+        ForecastBaselines.ETSTuning(0.5, 0.4, 0.0, 0.98),
+        ForecastBaselines.ETSSpace(10.0, 1.0, [0.0])
+    )
+    fitted = ForecastBaselines.ETSFitted(x, model, par, ForecastBaselines.ETSEstimationSetting())
+    method = ModelTrajectoryInterval(n_trajectories = 2000, return_trajectories = true)
+    _, _, intervals, trajectories = interval_forecast(fitted, method, 1:12, [0.5, 0.9])
+    @test size(trajectories) == (2000, 12)
+    @test all(isfinite, trajectories)
+    @test length(intervals) == 12
+end

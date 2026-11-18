@@ -823,6 +823,16 @@ function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64}) where {T
     return length(x) * log(sum(ϵ .^ 2)) + 2 * sum(log.(abs.(rr)))
 end
 
+# A multiplicative trend is a growth factor, so the model is only defined for a
+# positive one: the next step raises it to the power phi. A simulated shock can push
+# it below zero. The fitted trend is kept positive by the penalty in L_fun; here the
+# path is held at a vanishing positive factor, so that it keeps decaying towards zero
+# instead of leaving the support of the model.
+keep_trend_positive(z::ETSSpace, ::ETSModel) = z
+function keep_trend_positive(z::ETSSpace, ::ETSModel{<:ErrorType, MdTrend})
+    return z.B > 0 ? z : ETSSpace(z.L, eps(), z.S)
+end
+
 struct ETSEstimationSetting <: AbstractEstimationSetting
 end
 
@@ -1079,6 +1089,7 @@ function interval_forecast(
             end
             trajectories[i, hh] = w_function(zCurr, fitted.model, fitted.par.θ) + r_function(zCurr, fitted.model, fitted.par.θ) * ϵ[hh]
             zCurr = f_function(zCurr, fitted.model, fitted.par.θ) + g_function(zCurr, fitted.model, fitted.par.θ) * ϵ[hh]
+            zCurr = keep_trend_positive(zCurr, fitted.model)
 
             if method.positivity_correction == :zero_floor
                 trajectories[i, hh] = max(trajectories[i, hh], 0.0)
