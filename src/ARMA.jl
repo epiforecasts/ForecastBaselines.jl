@@ -279,6 +279,13 @@ function is_invertible(β::Vector{Float64}; tolerance::Float64 = 1.0e-10)
     return all(abs.(roots) .> 1 + tolerance)
 end
 
+"""
+    check_stability(α::Vector{Float64}, β::Vector{Float64}; tolerance = 1.0e-10) -> Bool
+
+Whether ARMA coefficients give a model that is both stationary (autoregressive
+coefficients `α`, see [`is_stationary`](@ref)) and invertible (moving-average
+coefficients `β`, see [`is_invertible`](@ref)).
+"""
 function check_stability(
         α::Vector{Float64}, β::Vector{Float64};
         tolerance::Float64 = 1.0e-10

@@ -301,7 +301,7 @@ function interval_forecast(
 
     for ss in 1:s
         ls = reverse(all_quantiles[ss][alpha .< 0.5])
-        us = all_quantiles[s][alpha .> 0.5]
+        us = all_quantiles[ss][alpha .> 0.5]
         all_intervals[ss] = ForecastInterval(ls, us, levels[levels .> 0])
     end
 

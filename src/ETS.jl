@@ -6,21 +6,78 @@ abstract type ErrorType end
 abstract type TrendType end
 abstract type SeasonType end
 
+"""
+    AError()
+
+Additive error component of an [`ETSModel`](@ref).
+"""
 struct AError <: ErrorType end
+
+"""
+    MError()
+
+Multiplicative error component of an [`ETSModel`](@ref).
+"""
 struct MError <: ErrorType end
 
+"""
+    NTrend()
+
+No trend in an [`ETSModel`](@ref).
+"""
 struct NTrend <: TrendType end
+
+"""
+    ATrend()
+
+Additive trend component of an [`ETSModel`](@ref).
+"""
 struct ATrend <: TrendType end
+
+"""
+    AdTrend()
+
+Additive damped trend component of an [`ETSModel`](@ref).
+"""
 struct AdTrend <: TrendType end
+
+"""
+    MTrend()
+
+Multiplicative trend component of an [`ETSModel`](@ref).
+"""
 struct MTrend <: TrendType end
+
+"""
+    MdTrend()
+
+Multiplicative damped trend component of an [`ETSModel`](@ref).
+"""
 struct MdTrend <: TrendType end
 
+"""
+    NSeason()
+
+No seasonality in an [`ETSModel`](@ref).
+"""
 struct NSeason <: SeasonType end
+
+"""
+    ASeason(s::Int)
+
+Additive seasonal component of an [`ETSModel`](@ref), with period `s`.
+"""
 struct ASeason <: SeasonType
-    s::Int # Periodicity
+    s::Int
 end
+
+"""
+    Mseason(s::Int)
+
+Multiplicative seasonal component of an [`ETSModel`](@ref), with period `s`.
+"""
 struct Mseason <: SeasonType
-    s::Int # Periodicity
+    s::Int
 end
 
 """

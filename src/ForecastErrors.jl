@@ -2,12 +2,25 @@
 # Prep for a scoring rule wrapper function
 # Split into point errors, interval errors and trajectory errors
 
+"""
+    AbstractError
+
+Supertype of the errors that compare a forecast with the observed value. Subtypes
+are grouped by what they compare: point forecasts ([`AbstractPointError`](@ref)),
+prediction intervals ([`AbstractIntervalError`](@ref)) or trajectories
+([`AbstractTrajectoryError`](@ref)).
+"""
 abstract type AbstractError end
 
 ####################
 ### Point errors ###
 ####################
 
+"""
+    AbstractPointError <: AbstractError
+
+Supertype of errors computed from a point forecast, such as [`AbsoluteError`](@ref).
+"""
 abstract type AbstractPointError <: AbstractError end
 
 """
@@ -426,18 +439,28 @@ end
 
 # Define error types for a target and truth value, where
 # the target is a forecast interval
+"""
+    AbstractIntervalError <: AbstractError
+
+Supertype of errors computed from prediction intervals, such as
+[`IntervalScore`](@ref).
+"""
 abstract type AbstractIntervalError <: AbstractError end
 
 """
     CoverageError(;correct_level::Bool = true)
 
-Coverage indicator for prediction intervals.
+Miss indicator for prediction intervals, used to assess their calibration.
+
+For each interval, the error is 1 if the observation falls outside it and 0 if it falls
+inside. With `correct_level = true` the nominal miss rate, one minus the interval's level,
+is subtracted, so the error averages to zero over well-calibrated intervals, is positive
+when intervals miss more often than their level implies (too narrow) and negative when
+they miss less often (too wide).
 
 # Fields
-- `correct_level::Bool`: If true, subtract nominal coverage from empirical coverage
-
-Returns whether observation falls within prediction interval(s).
-Used for interval calibration assessment.
+- `correct_level::Bool`: If true, subtract the nominal miss rate `1 - level` from the
+  miss indicator.
 """
 struct CoverageError <: AbstractIntervalError
     correct_level::Bool
@@ -686,6 +709,12 @@ end
 
 # Define error types for a target and truth value, where
 # the target is a forecast trajectory
+"""
+    AbstractTrajectoryError <: AbstractError
+
+Supertype of errors computed from sampled trajectories, such as
+[`CRPScore_trajectory`](@ref).
+"""
 abstract type AbstractTrajectoryError <: AbstractError end
 
 """

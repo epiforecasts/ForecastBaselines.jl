@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/epiforecasts/ForecastBaselines.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/epiforecasts/ForecastBaselines.jl/actions/workflows/CI.yml)
 [![codecov](https://codecov.io/gh/epiforecasts/ForecastBaselines.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/epiforecasts/ForecastBaselines.jl)
+[![Docs: stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://epiforecasts.github.io/ForecastBaselines.jl/stable/)
+[![Docs: dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://epiforecasts.github.io/ForecastBaselines.jl/dev/)
 
 A comprehensive Julia package for baseline forecasting methods.
 
@@ -171,7 +173,7 @@ mae_score = score(forecast_result, MAE())
 >  
 >  ✅ `NoInterval()`<br>
 >  ✅ `EmpiricalInterval()`<br>
->  ❌ `ParametricInterval()`<br>
+>  ✅ `ParametricInterval()`<br>
 >  ✅ `ModelTrajectoryInterval()`
 </details>
 
@@ -284,7 +286,7 @@ mae_score = score(forecast_result, MAE())
 >
 >INARCH(p) model with optional seasonality, either Poisson or Negative Bionomial (conditional) distribution with mean
 >
-> $$\lambda_t = \mu_t(\beta_0 + \sum_{i = 1}^p (y_{t-i}/\mu_{t-i}))$$
+> $$\lambda_t = \mu_t\left(\beta_0 + \sum_{i = 1}^p \alpha_i \, y_{t-i}/\mu_{t-i}\right)$$
 >
 >where $$\mu_t$$ is the seasonality component, $$\log(\mu_t)$$ is a harmonic wave of order k.
 >
@@ -546,15 +548,7 @@ fc = forecast(fitted, horizon=1:14)
 
 ## Documentation
 
-Documentation is available through Julia's help system:
-
-```julia
-?ARMAModel
-?forecast
-?score
-```
-
-(More details to be added)
+The [documentation](https://epiforecasts.github.io/ForecastBaselines.jl/dev/) has a getting-started guide, a description of each model and a reference for every exported function and type. Within Julia, `?ARMAModel` shows the docstring of any of them.
 
 ## Contributing
 
