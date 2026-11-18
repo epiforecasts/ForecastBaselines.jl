@@ -35,7 +35,7 @@ has_converged(fitted)
 
 ## Prediction intervals
 
-Three methods produce prediction intervals, and [`NoInterval`](@ref) gives point forecasts only. [`ParametricInterval`](@ref), used above, uses the model's closed-form forecast distribution where one exists. [`ModelTrajectoryInterval`](@ref) simulates future paths from the fitted model, and [`EmpiricalInterval`](@ref) refits the model on shorter stretches of the series and resamples the errors those fits made. Empirical intervals work for every model, but take longer, as they refit the model many times. Here are the 90% intervals one step ahead from each of the three methods:
+Three methods produce prediction intervals, and [`NoInterval`](@ref) gives point forecasts only. [`ParametricInterval`](@ref), used above, uses the model's own forecast distribution: in closed form for ARMA, OLS and IDS, and from quantiles of the past data, or of its estimated density, for the marginal, KDE and LSD models. [`ModelTrajectoryInterval`](@ref) simulates future paths from the fitted model, and [`EmpiricalInterval`](@ref) refits the model on shorter stretches of the series and resamples the errors those fits made. Empirical intervals work for every model, but take longer, as they refit the model many times. Here are the 90% intervals one step ahead from each of the three methods:
 
 ```@example guide
 parametric = forecast(fitted; interval_method = ParametricInterval(), horizon = 1:6, levels = [0.9])

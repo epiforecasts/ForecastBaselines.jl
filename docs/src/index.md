@@ -5,7 +5,7 @@ ForecastBaselines.jl fits baseline forecasting models to univariate time series,
 The package provides:
 
 - ten models: constant, marginal, kernel density, last similar dates, polynomial trend (OLS), increase–decrease–stable, ARMA, INARCH for counts, STL decomposition and all 30 ETS variants (see [Models](@ref));
-- prediction intervals from past forecast errors ([`EmpiricalInterval`](@ref)), closed-form formulae ([`ParametricInterval`](@ref)) or simulated trajectories ([`ModelTrajectoryInterval`](@ref));
+- prediction intervals from past forecast errors ([`EmpiricalInterval`](@ref)), the model's own forecast distribution ([`ParametricInterval`](@ref)) or simulated trajectories ([`ModelTrajectoryInterval`](@ref));
 - data transformations and seasonal-trend preprocessing that wrap any model ([`transform`](@ref), [`STTransform`](@ref));
 - point and interval scores, and calibration measures for evaluating forecasts ([`score`](@ref), [`CvM_divergence`](@ref)).
 
