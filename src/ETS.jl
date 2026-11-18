@@ -882,7 +882,7 @@ end
 
 # A multiplicative trend is a growth factor and must be positive, because the next
 # step raises it to the power phi. With additive errors a simulated shock can push it
-# below zero. Clamping it would give finite but meaningless paths, so we stop instead.
+# below zero. Clamping it would give finite but meaningless paths, so we throw an error.
 check_trend_positive(z::ETSSpace, ::ETSModel) = z
 function check_trend_positive(z::ETSSpace, ::ETSModel{<:ErrorType, MdTrend})
     z.B > 0 && return z
@@ -1079,7 +1079,7 @@ Generate prediction intervals using ETS model trajectories.
 - **Additive errors**: x_t = w(z_{t-1}) + ϵ_t
 - **Multiplicative errors**: x_t = w(z_{t-1})(1 + ϵ_t)
 
-Additive errors combined with a damped multiplicative trend can fail to simulate: the noise can flip the sign of the growth factor, and an `ArgumentError` is thrown. Use multiplicative errors or a damped additive trend instead.
+Simulation with additive errors and a damped multiplicative trend throws an `ArgumentError` if the noise flips the sign of the growth factor. Use multiplicative errors or a damped additive trend.
 
 # Example
 ```julia
