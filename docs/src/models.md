@@ -247,7 +247,7 @@ Integer-valued ARCH for count time series.
 INARCH(p) model with optional seasonality, either Poisson or negative binomial (conditional) distribution with mean
 
 ```math
-\lambda_t = \mu_t(\beta_0 + \sum_{i = 1}^p (y_{t-i}/\mu_{t-i}))
+\lambda_t = \mu_t\left(\beta_0 + \sum_{i = 1}^p \alpha_i \, y_{t-i}/\mu_{t-i}\right)
 ```
 
 where ``\mu_t`` is the seasonality component, ``\log(\mu_t)`` is a harmonic wave of order k.
