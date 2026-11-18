@@ -129,7 +129,7 @@ The model estimates the means of periods for a seasonal time series. For estimat
 
 - ✅ `NoInterval()`
 - ✅ `EmpiricalInterval()`
-- ❌ `ParametricInterval()`
+- ✅ `ParametricInterval()`
 - ✅ `ModelTrajectoryInterval()`
 
 ## `OLSModel`

@@ -173,7 +173,7 @@ mae_score = score(forecast_result, MAE())
 >  
 >  ✅ `NoInterval()`<br>
 >  ✅ `EmpiricalInterval()`<br>
->  ❌ `ParametricInterval()`<br>
+>  ✅ `ParametricInterval()`<br>
 >  ✅ `ModelTrajectoryInterval()`
 </details>
 
