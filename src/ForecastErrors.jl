@@ -709,7 +709,7 @@ end
     AbstractTrajectoryError <: AbstractError
 
 Supertype of errors computed from sampled trajectories, such as
-[`CRPScore`](@ref).
+[`CRPScore_trajectory`](@ref).
 """
 abstract type AbstractTrajectoryError <: AbstractError end
 
