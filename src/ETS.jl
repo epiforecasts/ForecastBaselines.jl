@@ -889,8 +889,8 @@ function check_trend_positive(z::ETSSpace, ::ETSModel{<:ErrorType, MdTrend})
     throw(
         ArgumentError(
             "A simulated trend state of a damped multiplicative trend became non-positive or NaN. " *
-            "The noise can flip the sign of the growth factor, so this model cannot be " *
-            "simulated reliably. Consider a damped additive trend (\"Ad\") instead."
+                "The noise can flip the sign of the growth factor, so this model cannot be " *
+                "simulated reliably. Consider a damped additive trend (\"Ad\") instead."
         )
     )
 end
