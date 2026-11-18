@@ -14,16 +14,16 @@ conditional mean with optional seasonality and overdispersion.
 - `nb::Bool`: Use negative binomial distribution instead of Poisson (default: false)
 
 # Mathematical Model
-λ_t = (β₀ + ∑_{i=1}^p α_i (Y_{t-i}/seasonal_component_{t+i})) seasonal_component_t
+λ_t = μ_t (β₀ + ∑_{i=1}^p α_i Y_{t-i}/μ_{t-i})
 
 where:
 - Y_t ~ Poisson(λ_t) or NegativeBinomial(λ_t, ϕ) if nb=true
 - λ_t is the conditional mean (intensity)
-- Seasonal component uses harmonic functions when s > 0
+- μ_t is the seasonal component, 1 when s = 0
 
 # Seasonality Specification
-When s > 0, seasonal component is:
-∑_{j=1}^k [γ_{2j-1} sin(2πjt/s) + γ_{2j} cos(2πjt/s)]
+When s > 0, the seasonal component is the exponential of a sum of harmonics:
+log μ_t = ∑_{j=1}^k [γ_{2j-1} sin(2πjt/s) + γ_{2j} cos(2πjt/s)]
 """
 struct INARCHModel <: AbstractBaselineModel
     p::Int
@@ -259,12 +259,12 @@ Generate point forecasts from fitted INARCH model.
 
 # Forecasting Method
 Computes conditional expectations recursively:
-λ_{T+h} = β₀ + ∑_{i=1}^p α_i X̂_{T+h-i} + seasonal_component_{T+h}
+λ_{T+h} = μ_{T+h} (β₀ + ∑_{i=1}^p α_i X̂_{T+h-i}/μ_{T+h-i})
 
 where:
 - Use historical data X_t for h ≤ i
 - Use previous forecasts X̂_{T+h-i} for h > i
-- Seasonal component computed from fitted harmonics
+- μ_t is the seasonal component from the fitted harmonics
 """
 function point_forecast(
         fitted::INARCHFitted,
