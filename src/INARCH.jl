@@ -309,20 +309,21 @@ function point_forecast(
     xOld = x[(end - p + 1):end] ./ seas[1:p]
     seas = seas[(p + 1):end]
 
-    fc_point = zeros(hMax)
+    # The recursion runs on the deseasonalised scale, like the observed lags in xOld,
+    # and each forecast is multiplied by its seasonal factor only at the end.
+    fc_scaled = zeros(hMax)
 
     for hh in 1:hMax
-        fc_point[hh] = β0
+        fc_scaled[hh] = β0
         for i in 1:p
             if hh - i <= 0
-                fc_point[hh] += xOld[p + hh - i] * α[i]
+                fc_scaled[hh] += xOld[p + hh - i] * α[i]
             else
-                fc_point[hh] += fc_point[hh - i] .* α[i]
+                fc_scaled[hh] += fc_scaled[hh - i] * α[i]
             end
         end
-
-        fc_point[hh] *= seas[hh]
     end
+    fc_point = fc_scaled .* seas[1:hMax]
     return fc_point[horizon]
 end
 
