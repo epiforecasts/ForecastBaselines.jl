@@ -267,47 +267,43 @@ function ETSpar2θ(par::ETSParameter, model::ETSModel{<:ErrorType, <:Union{AdTre
     return [par.θ.α; par.θ.β; par.θ.γ; par.θ.ϕ; par.z0.L; par.z0.B; par.z0.S]
 end
 
-# The smoothing parameters sit first in the parameter vector, in the order α, β, γ, ϕ,
-# with those the model lacks left out. The optimiser works on an unconstrained scale on
-# which they satisfy 0 < β < α, 0 < γ < 1 - α and 0 < ϕ < 1 by construction.
-logistic(u) = inv(1 + exp(-u))
-logit(p) = log(p / (1 - p))
-clamp_open(p) = clamp(p, 1.0e-6, 1 - 1.0e-6)
-
 function ETSfree2θ(u::Vector{Float64}, model::ETSModel)
     θ = copy(u)
-    α = logistic(u[1])
+    α = inv(1 + exp(-u[1]))
     θ[1] = α
     k = 2
     if !(model.trend isa NTrend)
-        θ[k] = α * logistic(u[k])
+        θ[k] = α * inv(1 + exp(-u[k]))
         k += 1
     end
     if !(model.season isa NSeason)
-        θ[k] = (1 - α) * logistic(u[k])
+        θ[k] = (1 - α) * inv(1 + exp(-u[k]))
         k += 1
     end
     if model.trend isa Union{AdTrend, MdTrend}
-        θ[k] = logistic(u[k])
+        θ[k] = inv(1 + exp(-u[k]))
     end
     return θ
 end
 
 function ETSθ2free(θ::Vector{Float64}, model::ETSModel)
     u = copy(θ)
-    α = clamp_open(θ[1])
-    u[1] = logit(α)
+    α = clamp(θ[1], 1.0e-6, 1 - 1.0e-6)
+    u[1] = log(α / (1 - α))
     k = 2
     if !(model.trend isa NTrend)
-        u[k] = logit(clamp_open(θ[k] / α))
+        p = clamp(θ[k] / α, 1.0e-6, 1 - 1.0e-6)
+        u[k] = log(p / (1 - p))
         k += 1
     end
     if !(model.season isa NSeason)
-        u[k] = logit(clamp_open(θ[k] / (1 - α)))
+        p = clamp(θ[k] / (1 - α), 1.0e-6, 1 - 1.0e-6)
+        u[k] = log(p / (1 - p))
         k += 1
     end
     if model.trend isa Union{AdTrend, MdTrend}
-        u[k] = logit(clamp_open(θ[k]))
+        p = clamp(θ[k], 1.0e-6, 1 - 1.0e-6)
+        u[k] = log(p / (1 - p))
     end
     return u
 end
