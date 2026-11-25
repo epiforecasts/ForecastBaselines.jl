@@ -248,7 +248,7 @@ function ETSpar2θ(par::ETSParameter, model::ETSModel{<:ErrorType, NTrend, NSeas
 end
 
 function ETSpar2θ(par::ETSParameter, model::ETSModel{<:ErrorType, NTrend, <:Union{ASeason, Mseason}})
-    return [par.θ.α; par.θ.β; par.z0.L; par.z0.S]
+    return [par.θ.α; par.θ.γ; par.z0.L; par.z0.S]
 end
 
 function ETSpar2θ(par::ETSParameter, model::ETSModel{<:ErrorType, <:Union{ATrend, MTrend}, NSeason})
@@ -265,6 +265,51 @@ end
 
 function ETSpar2θ(par::ETSParameter, model::ETSModel{<:ErrorType, <:Union{AdTrend, MdTrend}, <:Union{ASeason, Mseason}})
     return [par.θ.α; par.θ.β; par.θ.γ; par.θ.ϕ; par.z0.L; par.z0.B; par.z0.S]
+end
+
+# The smoothing parameters sit first in the parameter vector, in the order α, β, γ, ϕ,
+# with those the model lacks left out. The optimiser works on an unconstrained scale on
+# which they satisfy 0 < β < α, 0 < γ < 1 - α and 0 < ϕ < 1 by construction.
+logistic(u) = inv(1 + exp(-u))
+logit(p) = log(p / (1 - p))
+clamp_open(p) = clamp(p, 1.0e-6, 1 - 1.0e-6)
+
+function ETSfree2θ(u::Vector{Float64}, model::ETSModel)
+    θ = copy(u)
+    α = logistic(u[1])
+    θ[1] = α
+    k = 2
+    if !(model.trend isa NTrend)
+        θ[k] = α * logistic(u[k])
+        k += 1
+    end
+    if !(model.season isa NSeason)
+        θ[k] = (1 - α) * logistic(u[k])
+        k += 1
+    end
+    if model.trend isa Union{AdTrend, MdTrend}
+        θ[k] = logistic(u[k])
+    end
+    return θ
+end
+
+function ETSθ2free(θ::Vector{Float64}, model::ETSModel)
+    u = copy(θ)
+    α = clamp_open(θ[1])
+    u[1] = logit(α)
+    k = 2
+    if !(model.trend isa NTrend)
+        u[k] = logit(clamp_open(θ[k] / α))
+        k += 1
+    end
+    if !(model.season isa NSeason)
+        u[k] = logit(clamp_open(θ[k] / (1 - α)))
+        k += 1
+    end
+    if model.trend isa Union{AdTrend, MdTrend}
+        u[k] = logit(clamp_open(θ[k]))
+    end
+    return u
 end
 
 # A-N-N
@@ -877,7 +922,8 @@ function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64}) where {T
     end
     ϵ = filtered.ϵ
     rr = [r_function(filtered.z0, model, par.θ); (zz -> r_function(zz, model, par.θ)).(filtered.z[1:(end - 1)])]
-    return length(x) * log(sum(ϵ .^ 2)) + 2 * sum(log.(abs.(rr)))
+    value = length(x) * log(sum(ϵ .^ 2)) + 2 * sum(log.(abs.(rr)))
+    return isfinite(value) ? value : 1.0e8
 end
 
 # A multiplicative trend is a growth factor and must be positive, because the next
@@ -987,9 +1033,31 @@ function fit_baseline(
         setting = ETSEstimationSetting()
     end
     init = isnothing(start) ? getInitial(x, model) : start
-    initVec = ETSpar2θ(init, model)
-    result = optimize(vars -> L_fun(x, model, vars), initVec)
-    estVec = result.minimizer
+    objective = u -> L_fun(x, model, ETSfree2θ(u, model))
+    starts = [init]
+    if isnothing(start)
+        push!(starts, ETSParameter(ETSTuning(0.8, 0.4, 0.1, 0.9), init.z0))
+    end
+    coarse = argmin(
+        Optim.minimum, [
+            optimize(objective, ETSθ2free(ETSpar2θ(par, model), model), NelderMead(), Optim.Options(iterations = 2000))
+                for par in starts
+        ]
+    )
+    polished = try
+        optimize(objective, coarse.minimizer, LBFGS(), Optim.Options(iterations = 500))
+    catch err
+        err isa AssertionError || rethrow()
+        nothing
+    end
+    use_polished = !isnothing(polished) && Optim.minimum(polished) <= Optim.minimum(coarse)
+    result = use_polished ? polished : coarse
+    estVec = ETSfree2θ(result.minimizer, model)
+    original = optimize(vars -> L_fun(x, model, vars), ETSpar2θ(init, model))
+    if Optim.minimum(original) < Optim.minimum(result)
+        result = original
+        estVec = original.minimizer
+    end
     return ETSFitted(
         x, model, ETSθ2par(estVec, model), setting, temporal_info, optimisation_info(result, "ETS")
     )

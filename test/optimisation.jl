@@ -1,10 +1,7 @@
 @testitem "Fits report whether the optimiser converged" setup = [TestData] tags = [:optimisation] begin
     using ForecastBaselines: OptimisationInfo
-    # Nelder-Mead reaches its iteration limit on this Holt-Winters fit but converges on
-    # simple exponential smoothing, ARMA(1,1) and INARCH(1).
     holt_winters = fit_baseline(seasonal_data, ETSModel(error = "A", trend = "A", season = "A", s = 12))
-    @test has_converged(holt_winters) === false
-    @test holt_winters.optimisation.iterations == 1000
+    @test has_converged(holt_winters) === true
 
     for fitted in (
             fit_baseline(seasonal_data, ETSModel()),
@@ -25,8 +22,7 @@
 end
 
 @testitem "A fit that stops without converging warns" setup = [TestData] tags = [:optimisation] begin
-    model = ETSModel(error = "A", trend = "A", season = "A", s = 12)
-    @test_logs (:warn, r"without converging") fit_baseline(seasonal_data, model)
+    @test_logs (:warn, r"without converging") fit_baseline(stationary_data, ARMAModel(p = 3, q = 3))
     @test_logs fit_baseline(seasonal_data, ETSModel())
 end
 
@@ -39,14 +35,6 @@ end
     fitted = fit_baseline(x, ETSModel(error = "A", trend = "A"))
     @test has_converged(fitted)
     @test_logs min_level = Logging.Warn forecast(fitted; interval_method = EmpiricalInterval(), horizon = 1:4)
-end
-
-@testitem "Each model type warns about its own non-converged fits" setup = [TestData] tags = [:optimisation] begin
-    holt_winters = ETSModel(error = "A", trend = "A", season = "A", s = 12)
-    @test_logs (:warn, r"ETS fit .* without converging") (:warn, r"ARMA fit .* without converging") begin
-        fit_baseline(seasonal_data, holt_winters)
-        fit_baseline(stationary_data, ARMAModel(p = 3, q = 3))
-    end
 end
 
 @testitem "ETS refits can start from an earlier fit" setup = [TestData] tags = [:optimisation] begin
