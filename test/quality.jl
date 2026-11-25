@@ -11,7 +11,7 @@ end
     if VERSION >= v"1.11"
         # KDEModel reuses KernelDensity's bandwidth, boundary and weight defaults so
         # that its fits match kde(), and fits read Optim's documented `converged` and
-        # `iterations` and `minimum` accessors and `Options`; neither package marks
+        # `iterations` and `minimum` accessors and `Options`. Neither package marks
         # these names as public.
         @test check_all_qualified_accesses_are_public(
             ForecastBaselines;
