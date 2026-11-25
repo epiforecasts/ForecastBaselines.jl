@@ -1,7 +1,7 @@
 name = "ForecastBaselines"
 uuid = "d939df8b-32bd-4754-9006-1ae460420eb6"
-authors = ["ManuelStapper"]
 version = "0.1.0"
+authors = ["ManuelStapper"]
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -23,7 +23,7 @@ ExplicitImports = "1"
 KernelDensity = "0.6"
 LinearAlgebra = "1"
 Logging = "1"
-Optim = "1.0"
+Optim = "1.0, 2"
 Polynomials = "3.0, 4.0"
 Printf = "1"
 Random = "1"
