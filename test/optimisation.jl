@@ -49,42 +49,6 @@ end
     end
 end
 
-@testitem "ETS smoothing parameters map to and from an unconstrained scale" tags = [:optimisation] begin
-    using ForecastBaselines: smoothing_to_unconstrained, smoothing_from_unconstrained
-    for model in (
-            ETSModel(), ETSModel(error = "A", trend = "A"), ETSModel(error = "M", trend = "Ad"),
-            ETSModel(season = "A", s = 4), ETSModel(error = "M", trend = "Md", season = "M", s = 4),
-        )
-        k = 1 + !(model.trend isa ForecastBaselines.NTrend) + !(model.season isa ForecastBaselines.NSeason) +
-            (model.trend isa Union{ForecastBaselines.AdTrend, ForecastBaselines.MdTrend})
-        # Values with beta < alpha, gamma < 1 - alpha and phi < 1 survive a round trip.
-        θ = [[0.4, 0.2, 0.3, 0.8][1:k]; 5.0; 1.0]
-        back = smoothing_from_unconstrained(smoothing_to_unconstrained(θ, model), model)
-        @test back ≈ θ
-        # Any point on the unconstrained scale is admissible.
-        for u in ([-30.0, 30.0, -5.0, 8.0], [30.0, 30.0, 30.0, 30.0])
-            v = smoothing_from_unconstrained([u[1:k]; zeros(2)], model)
-            α = v[1]
-            @test 0 <= α <= 1
-            if !(model.trend isa ForecastBaselines.NTrend)
-                @test 0 <= v[2] <= α
-            end
-            if !(model.season isa ForecastBaselines.NSeason)
-                γ = v[model.trend isa ForecastBaselines.NTrend ? 2 : 3]
-                @test 0 <= γ <= 1 - α
-            end
-        end
-    end
-end
-
-@testitem "The extended ETS search converges where the default search stops at its limit" setup = [TestData] tags = [:optimisation] begin
-    model = ETSModel(error = "A", trend = "A", season = "A", s = 12)
-    @test has_converged(fit_baseline(seasonal_data, model)) === false
-    extended = fit_baseline(seasonal_data, model, setting = ETSEstimationSetting(extended_search = true))
-    @test has_converged(extended) === true
-    @test !ETSEstimationSetting().extended_search
-end
-
 @testitem "ETS refits can start from an earlier fit" setup = [TestData] tags = [:optimisation] begin
     model = ETSModel(error = "A", trend = "A")
     full = fit_baseline(trend_data, model)
@@ -94,12 +58,12 @@ end
     @test refit.par.θ.α ≈ fit_baseline(shorter, model).par.θ.α atol = 0.05
 end
 
-@testitem "Default ETS refits ignore the earlier fit" setup = [TestData] tags = [:optimisation] begin
+@testitem "Historical ETS refits start from the full fit" setup = [TestData] tags = [:optimisation] begin
     model = ETSModel(error = "A", trend = "A")
     full = fit_baseline(trend_data, model)
     shorter = trend_data[1:(end - 5)]
     refit = ForecastBaselines.refit_baseline(full, shorter)
-    default = fit_baseline(shorter, model)
-    @test refit.par.θ.α == default.par.θ.α
-    @test refit.par.θ.β == default.par.θ.β
+    started = fit_baseline(shorter, model, start = full.par)
+    @test refit.par.θ.α == started.par.θ.α
+    @test refit.par.θ.β == started.par.θ.β
 end

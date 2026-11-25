@@ -7,7 +7,7 @@ using Distributions: Distributions, ContinuousUnivariateDistribution, Distributi
 using KernelDensity: KernelDensity, kde
 using LinearAlgebra: LinearAlgebra
 using Logging: Logging
-using Optim: Optim, LBFGS, NelderMead, optimize
+using Optim: Optim, optimize
 using Polynomials: Polynomials
 using Printf: @sprintf
 using Random: Random

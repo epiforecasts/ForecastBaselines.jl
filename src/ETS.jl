@@ -881,85 +881,12 @@ function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64}) where {T
 end
 
 """
-    ETSEstimationSetting(; extended_search = false)
+    ETSEstimationSetting()
 
-Settings for the ETS fit. With `extended_search = true` the smoothing parameters are
-estimated on a logistic scale with Nelder-Mead, followed by L-BFGS and a second starting
-point if Nelder-Mead has not converged (see `fit_baseline`). The default is a single
-Nelder-Mead run on the original scale.
+Estimation settings for an [`ETSModel`](@ref). It has no options: parameters are
+estimated by minimising the likelihood-based criterion with Nelder-Mead.
 """
 struct ETSEstimationSetting <: AbstractEstimationSetting
-    extended_search::Bool
-end
-ETSEstimationSetting(; extended_search::Bool = false) = ETSEstimationSetting(extended_search)
-
-logit(p) = log(p / (1 - p))
-logistic(u) = 1 / (1 + exp(-u))
-
-# The smoothing parameters come first in the parameter vector, in the order alpha,
-# beta (trend), gamma (season), phi (damped trend). They are admissible when
-# 0 < alpha < 1, 0 < beta < alpha, 0 < gamma < 1 - alpha and 0 < phi < 1. Each is
-# therefore a logistic fraction of the room left by the earlier ones. On this scale the
-# optimiser never meets a boundary and the objective is smooth everywhere.
-is_damped(model::ETSModel) = model.trend isa Union{AdTrend, MdTrend}
-
-# A starting value on or outside a bound is moved just inside it.
-function smoothing_to_unconstrained(θ::Vector{Float64}, model::ETSModel)
-    inside(p) = clamp(p, 1.0e-3, 1 - 1.0e-3)
-    u = copy(θ)
-    α = inside(θ[1])
-    u[1] = logit(α)
-    i = 2
-    if !(model.trend isa NTrend)
-        u[i] = logit(inside(θ[i] / α))
-        i += 1
-    end
-    if !(model.season isa NSeason)
-        u[i] = logit(inside(θ[i] / (1 - α)))
-        i += 1
-    end
-    if is_damped(model)
-        u[i] = logit(inside(θ[i]))
-    end
-    return u
-end
-
-# Nelder-Mead needs no gradients, which the penalised regions of the objective (states
-# that leave their domain) would corrupt, and it gets near an optimum. Where it has
-# converged the search stops and the fit costs what it always did. Otherwise L-BFGS
-# continues from there, where the objective is smooth.
-function optimise_ets(objective, u0::Vector{Float64})
-    start = optimize(objective, u0, NelderMead())
-    Optim.converged(start) && return start
-    result = try
-        optimize(objective, start.minimizer, LBFGS())
-    catch err
-        # The line search can step across a penalised region and then fail.
-        err isa AssertionError || rethrow()
-        start
-    end
-    return best_of(result, start)
-end
-
-best_of(a, b) = Optim.minimum(a) <= Optim.minimum(b) ? a : b
-
-function smoothing_from_unconstrained(u::Vector{Float64}, model::ETSModel)
-    θ = copy(u)
-    α = logistic(u[1])
-    θ[1] = α
-    i = 2
-    if !(model.trend isa NTrend)
-        θ[i] = α * logistic(u[i])
-        i += 1
-    end
-    if !(model.season isa NSeason)
-        θ[i] = (1 - α) * logistic(u[i])
-        i += 1
-    end
-    if is_damped(model)
-        θ[i] = logistic(u[i])
-    end
-    return θ
 end
 
 """
@@ -1015,14 +942,12 @@ Fit ETS model using maximum likelihood estimation.
 - `ETSFitted`: Fitted model with estimated parameters
 
 # Estimation Method
-By default the fit is a single Nelder-Mead run on the original parameter scale from the initial values of `getInitial`. With `ETSEstimationSetting(extended_search = true)`:
+1. Generate initial parameter values using `getInitial`, or take them from `start`
+2. Optimise concentrated log-likelihood using Nelder-Mead
+3. Likelihood includes both fit and smoothness penalties
+4. Automatic constraint handling for parameter bounds
 
-1. Generate initial parameter values using `getInitial`
-2. Map the smoothing parameters to an unconstrained scale with logistic transforms
-3. Optimise the concentrated log-likelihood with Nelder-Mead. If it has not converged, continue with L-BFGS (finite-difference gradients), falling back to the Nelder-Mead result if L-BFGS fails
-4. If the fit has still not converged, repeat step 3 from a second starting point with alpha = 0.9, because the likelihood is often bimodal in alpha. Keep the fit with the lower objective
-
-`start` replaces the initial values of step 1 with the parameters of an earlier fit, for example of the same model to a longer series. `has_converged` and the iteration count describe only the final stage of the winning run.
+`start` replaces the initial values of step 1 with the parameters of an earlier fit, for example of the same model to a longer series.
 
 # Example
 ```julia
@@ -1048,33 +973,16 @@ function fit_baseline(
     end
     init = isnothing(start) ? getInitial(x, model) : start
     initVec = ETSpar2θ(init, model)
-    if !setting.extended_search
-        result = optimize(vars -> L_fun(x, model, vars), initVec)
-        estVec = result.minimizer
-    else
-        objective = u -> L_fun(x, model, smoothing_from_unconstrained(u, model))
-        u0 = smoothing_to_unconstrained(initVec, model)
-        result = optimise_ets(objective, u0)
-        if !Optim.converged(result)
-            # The likelihood is often multimodal in the smoothing parameters: one local optimum
-            # lies at small values and another near a random walk (alpha close to one). An
-            # unconverged fit therefore also starts from a large alpha and keeps the better result.
-            u1 = copy(u0)
-            u1[1] = logit(0.9)
-            result = best_of(result, optimise_ets(objective, u1))
-        end
-        estVec = smoothing_from_unconstrained(result.minimizer, model)
-    end
+    result = optimize(vars -> L_fun(x, model, vars), initVec)
+    estVec = result.minimizer
     return ETSFitted(
         x, model, ETSθ2par(estVec, model), setting, temporal_info, optimisation_info(result, "ETS")
     )
 end
 
-# With the extended search, the parameters of the fit to the full series lie close to the optimum for a
-# shorter series. The default search still starts from getInitial and gives the same results as before.
+# The parameters of the fit to the full series lie close to the optimum for a shorter series.
 function refit_baseline(fitted::ETSFitted, x)
-    start = fitted.estimation_setting.extended_search ? fitted.par : nothing
-    return fit_baseline(x, fitted.model, setting = fitted.estimation_setting, start = start)
+    return fit_baseline(x, fitted.model, setting = fitted.estimation_setting, start = fitted.par)
 end
 
 has_converged(fitted::ETSFitted) = isnothing(fitted.optimisation) ? nothing : fitted.optimisation.converged
