@@ -926,24 +926,28 @@ end
 """
     fit_baseline(x::Vector{Float64}, model::ETSModel;
                 setting::Union{ETSEstimationSetting, Nothing} = ETSEstimationSetting(),
-                temporal_info::TemporalInfo = TemporalInfo()) -> ETSFitted
+                temporal_info::TemporalInfo = TemporalInfo(),
+                start::Union{ETSParameter, Nothing} = nothing) -> ETSFitted
 
 Fit ETS model using maximum likelihood estimation.
 
 # Arguments
 - `x::Vector{Float64}`: Time series data
 - `model::ETSModel`: ETS model specification
-- `setting`: Estimation settings (optional)
+- `setting`: Estimation settings (optional); see `ETSEstimationSetting`
 - `temporal_info`: Temporal metadata (optional)
+- `start`: Parameters to start the optimisation from (optional)
 
 # Returns
 - `ETSFitted`: Fitted model with estimated parameters
 
 # Estimation Method
-1. Generate initial parameter values using `getInitial`
-2. Optimise concentrated log-likelihood using L-BFGS
+1. Generate initial parameter values using `getInitial`, or take them from `start`
+2. Optimise concentrated log-likelihood using Nelder-Mead
 3. Likelihood includes both fit and smoothness penalties
 4. Automatic constraint handling for parameter bounds
+
+`start` replaces the initial values of step 1 with the parameters of an earlier fit, for example of the same model to a longer series.
 
 # Example
 ```julia
@@ -961,18 +965,24 @@ function fit_baseline(
         x::Vector{T1},
         model::ETSModel;
         setting::Union{ETSEstimationSetting, Nothing} = ETSEstimationSetting(),
-        temporal_info::TemporalInfo = TemporalInfo()
+        temporal_info::TemporalInfo = TemporalInfo(),
+        start::Union{ETSParameter, Nothing} = nothing
     ) where {T1 <: Real}
     if isnothing(setting)
         setting = ETSEstimationSetting()
     end
-    init = getInitial(x, model)
+    init = isnothing(start) ? getInitial(x, model) : start
     initVec = ETSpar2θ(init, model)
     result = optimize(vars -> L_fun(x, model, vars), initVec)
     estVec = result.minimizer
     return ETSFitted(
         x, model, ETSθ2par(estVec, model), setting, temporal_info, optimisation_info(result, "ETS")
     )
+end
+
+# The parameters of the fit to the full series are close to the optimum for a shorter series.
+function refit_baseline(fitted::ETSFitted, x)
+    return fit_baseline(x, fitted.model, setting = fitted.estimation_setting, start = fitted.par)
 end
 
 has_converged(fitted::ETSFitted) = isnothing(fitted.optimisation) ? nothing : fitted.optimisation.converged
