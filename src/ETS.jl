@@ -980,7 +980,7 @@ function fit_baseline(
     )
 end
 
-# The parameters of the fit to the full series lie close to the optimum for a shorter series.
+# The parameters of the fit to the full series are close to the optimum for a shorter series.
 function refit_baseline(fitted::ETSFitted, x)
     return fit_baseline(x, fitted.model, setting = fitted.estimation_setting, start = fitted.par)
 end
