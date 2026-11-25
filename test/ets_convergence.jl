@@ -6,6 +6,13 @@
     @test ForecastBaselines.L_fun(seasonal_data, model, ForecastBaselines.ETSpar2θ(fitted.par, model)) < 1015.5
 end
 
+@testitem "A perfect ETS fit has the best likelihood" tags = [:models, :ets] begin
+    using ForecastBaselines
+    model = ETSModel()
+    @test ForecastBaselines.L_fun(fill(5.0, 10), model, [0.5, 5.0]) == -Inf
+    @test ForecastBaselines.L_fun(fill(5.0, 10), model, [0.5, NaN]) == 1.0e8
+end
+
 @testitem "ETS keeps a better result from the original search" tags = [:models, :ets] begin
     using ForecastBaselines, Optim, Random
     Random.seed!(123)

@@ -919,7 +919,7 @@ function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64}) where {T
     ϵ = filtered.ϵ
     rr = [r_function(filtered.z0, model, par.θ); (zz -> r_function(zz, model, par.θ)).(filtered.z[1:(end - 1)])]
     value = length(x) * log(sum(ϵ .^ 2)) + 2 * sum(log.(abs.(rr)))
-    return isfinite(value) ? value : 1.0e8
+    return isfinite(value) || value == -Inf ? value : 1.0e8
 end
 
 # A multiplicative trend is a growth factor and must be positive, because the next
