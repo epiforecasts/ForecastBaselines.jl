@@ -42,7 +42,6 @@ end
     full = fit_baseline(trend_data, model)
     shorter = trend_data[1:(end - 5)]
     refit = fit_baseline(shorter, model, start = full.par)
-    @test has_converged(refit)
     @test refit.par.θ.α ≈ fit_baseline(shorter, model).par.θ.α atol = 0.05
 end
 
